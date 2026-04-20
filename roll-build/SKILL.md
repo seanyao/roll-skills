@@ -132,6 +132,22 @@ Before any code, assess clarity:
 - Follow with 3–5 targeted questions
 - Stop and wait for user answers before proceeding
 
+**Approach Confirmation (required for UX / format / automation decisions):**
+
+If the request involves any of: output format, layout, automation level (manual vs automatic), or architecture structure — output a confirmation block **before writing any code**:
+
+```
+📐 Approach Confirmation
+
+   1. What changes: {what will be built or modified}
+   2. The approach: {specific format / automation level / structure chosen}
+   3. Files touched: {list of files}
+
+   Proceeding unless you say otherwise.
+```
+
+Wait for the user's response before editing files. If the user does not object within one exchange, proceed.
+
 **Complexity Rules (AI coding time):**
 
 | Level | Scope | Action |

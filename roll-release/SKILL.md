@@ -9,17 +9,25 @@ One-command publish flow for roll maintainers.
 
 ## Version Format
 
-`YYYY.MMDD.N` — e.g. `2026.0419.1`
+`YYYY.MMDD.N` — e.g. `2026.419.1`
 
-- `YYYY.MMDD` = today's date
+- `YYYY.MMDD` = today's date, month has **no leading zero** (e.g. `420` not `0420`)
 - `N` = auto-incremented from existing git tags for today (starts at 1)
 
 ## Execution Steps
 
 ### Step 1: Calculate Version
 
+First, inspect recent tags to confirm the actual format in use:
+
 ```bash
-today=$(date +%Y.%m%d)
+git tag | sort -V | tail -5
+```
+
+Then calculate:
+
+```bash
+today=$(date +%Y.%-m%d)
 last_n=$(git tag | grep "^v${today}\." | sed "s/^v${today}\.//" | sort -n | tail -1)
 n=$(( ${last_n:-0} + 1 ))
 version="${today}.${n}"
@@ -27,7 +35,8 @@ version="${today}.${n}"
 
 Show the proposed version to the user:
 ```
-Proposed version: v2026.0419.1
+Recent tags: v2026.419.1  v2026.419.2  v2026.420.3
+Proposed version: 2026.420.4
 Proceed? [y/N]
 ```
 
