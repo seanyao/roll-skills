@@ -1,5 +1,6 @@
 ---
 name: roll-notes
+license: MIT
 description: "Project diary skill. Records development moments — successes, failures, discoveries — appended chronologically to a daily notes file."
 ---
 
@@ -18,6 +19,12 @@ description: "Project diary skill. Records development moments — successes, fa
 $roll-notes 终于搞定了那个 WebSocket 断线重连的 bug
 $roll-notes 今天的 code review 给了很好的反馈
 ```
+
+## When Not to Use
+
+- Capturing a bug or feature idea into BACKLOG (use `$roll-jot`)
+- Generating user-facing release notes (use `$roll-.changelog`)
+- Writing design documents or AC (use `$roll-design`)
 
 ## Behavior
 

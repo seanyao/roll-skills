@@ -1,5 +1,6 @@
 ---
 name: roll-spar
+license: MIT
 description: Adversarial TDD mode with Attacker/Defender agents. Attacker writes tests to break the system, Defender writes minimal code to pass. Use for high-risk logic like auth, payments, data integrity, or complex state machines.
 ---
 
@@ -109,7 +110,7 @@ User: "$roll-spar implement transfer logic" or agent auto-triggers
 │    - Defender summarizes defense    │
 │      strategy                       │
 │    - Merged report                  │
-│    - Continue normal story-build    │
+│    - Continue normal roll-build     │
 │      flow                           │
 │      (push → CI → deploy → verify)  │
 └─────────────────────────────────────┘
@@ -205,12 +206,12 @@ Report to the user after each round:
 4. **Attack intent must be explained** — cannot just write tests without explaining "why this scenario matters"
 5. **Maximum round limit** — default 5 rounds, prevents infinite loops
 
-## Integration with story-build
+## Integration with roll-build
 
-Spar replaces steps 4-5 in story-build (Test Design + TCR Implementation):
+Spar replaces steps 4-5 in roll-build (Test Design + TCR Implementation):
 
 ```
-story-build normal flow:
+roll-build normal flow:
   1. Clarify Story
   2. Split Actions
   3. Define verification
@@ -223,7 +224,7 @@ story-build normal flow:
   ...
 ```
 
-**Auto-switching from story-build to Spar:**
+**Auto-switching from roll-build to Spar:**
 
 When the agent assesses an Action as high-risk at step 3:
 ```
@@ -232,7 +233,7 @@ When the agent assesses an Action as high-risk at step 3:
    Recommend enabling Spar mode — confirm? [Y/n]
 ```
 
-After user confirms, enter Spar. Once complete, return to story-build step 6 to continue.
+After user confirms, enter Spar. Once complete, return to roll-build step 6 to continue.
 
 ## Example
 

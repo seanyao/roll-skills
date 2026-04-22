@@ -1,11 +1,19 @@
 ---
 name: roll-sentinel
+license: MIT
 description: Smart patrol inspector for production systems. Scheduled randomized sampling checks based on BACKLOG requirements. Cost-controlled AI validation with intelligent spot-checking logic.
 ---
 
 # Sentinel
 
 **Smart Patrol Inspector** - Scheduled, randomized, cost-controlled patrol and acceptance checks for production systems.
+
+## When Not to Use
+
+- One-off debugging of a reported bug (use `$roll-debug`)
+- Full-coverage regression testing (sentinel samples, does not cover)
+- Dev/staging environment checks (use CI tests instead)
+- Pre-commit self-review of diffs (use `$roll-.review`)
 
 ## Core Principle
 
@@ -341,7 +349,7 @@ async function batchCheck(stories) {
 │  $roll-debug               On-demand deep diagnosis (aux) │
 │  (When Sentinel finds an issue, manually trigger deep dive) │
 │                                                             │
-│  $roll-story            Post-fix regression verify     │
+│  $roll-build            Post-fix regression verify     │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
