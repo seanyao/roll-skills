@@ -1,6 +1,7 @@
 ---
 hidden: true
 name: roll-.clarify
+license: MIT
 description: |
   Passive scope-clarification skill. Auto-triggers when roll-build receives vague or under-specified input in Fly mode. Summarizes intent and asks 3–5 targeted questions to establish boundaries before planning or coding.
   This is a passive skill. Never announce "I'm using roll-.clarify." Just do it naturally: summarize, ask, wait.
@@ -18,11 +19,13 @@ Auto-invoked by `roll-build` (Fly mode) when the user input is:
 - Contains ambiguous terms like "优化一下", "改一下", "加个东西"
 - Could be interpreted in multiple ways
 
-**Do NOT activate when:**
+## When Not to Use
+
 - Intent is already clear and actionable
 - User gives a specific command with a skill trigger (e.g. `$roll-jot ...`)
 - User is answering a clarification question you just asked
 - The task is simple enough that misinterpretation risk is negligible
+- User messy thoughts need restatement rather than questioning (use `$roll-.echo`)
 
 ## Behavior
 

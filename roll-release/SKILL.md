@@ -1,11 +1,19 @@
 ---
 name: roll-release
+license: MIT
 description: "Release skill for roll maintainers. Calculates next version (YYYY.MMDD.N format, auto-increments N from today's git tags), updates VERSION in bin/roll and package.json, commits, tags, and pushes to trigger npm auto-publish via GitHub Actions. Trigger: release, publish, 发版, 发布新版本."
 ---
 
 # Release (roll-release)
 
 One-command publish flow for roll maintainers.
+
+## When Not to Use
+
+- Non-maintainer users (this skill publishes `@seanyao/roll` to npm under seanyao)
+- Internal project releases — only for the `roll` CLI package itself
+- Hotfixing code without a version bump (use `$roll-fix`)
+- Generating user-facing release notes (use `$roll-.changelog`)
 
 ## Version Format
 

@@ -1,5 +1,6 @@
 ---
 name: roll-debug
+license: MIT
 description: Universal web debugger. Collects diagnostics (console/network/DOM) via Playwright, analyzes root causes, and suggests fixes. Works with or without Black Box (BB) integration.
 ---
 
@@ -20,6 +21,12 @@ Two collection modes:
 - User uploads a diagnostic file (`diagnostics-*.json`, `bb-report.json`)
 - "Analyze BB data", "look at the diagnostic file"
 - Any scenario requiring web page diagnosis
+
+## When Not to Use
+
+- Non-web environments (CLI tools, backend-only services) — outside this skill's scope
+- Scheduled production sampling / acceptance checks (use `$roll-sentinel`)
+- Pure source-reading without runtime reproduction
 
 ## Quick Start
 
@@ -424,5 +431,5 @@ After `$roll-debug` finds issues:
 
 # For a complex multi-step fix
 # → Create US-XXX in backlog
-# → $roll-story US-XXX
+# → $roll-build US-XXX
 ```

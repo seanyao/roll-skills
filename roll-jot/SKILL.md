@@ -1,5 +1,6 @@
 ---
 name: roll-jot
+license: MIT
 description: "Fast backlog capture. Analyzes a short description, classifies it as bug or idea, and appends it to BACKLOG.md with an auto-incremented ID."
 ---
 
@@ -16,6 +17,12 @@ $roll-jot 评价页面的星星也要纳入到 draft 的 scope 里
 $roll-jot 手机端星星指标一行一个从上往下排
 $roll-jot 给 HOD 加一个批量导出 PDF 的功能
 ```
+
+## When Not to Use
+
+- Requirement needs discussion or splitting into Stories (use `$roll-design`)
+- A US-XXX / FIX-XXX is ready to execute (use `$roll-build` / `$roll-fix`)
+- Recording a development moment or feeling (use `$roll-notes`)
 
 ## Behavior
 

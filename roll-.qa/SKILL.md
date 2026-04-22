@@ -1,16 +1,23 @@
 ---
 hidden: true
-name: roll-.qa-cover
+name: roll-.qa
+license: MIT
 description: QA coverage reference for build skills. Defines test pyramid (unit/E2E/visual/smoke), coverage requirements, and CI gates. Ensures quality assurance across all testing layers.
 ---
 
 # QA Cover
 
-This is a **reference skill** used by `roll-story`, `roll-fix`, and `roll-fly` for quality assurance and test coverage.
+This is a **reference skill** used by `roll-build` and `roll-fix` for quality assurance and test coverage.
 
 ## When to Apply
 
 Any product with a user interface (Web, Desktop, Mobile) must follow these testing standards.
+
+## When Not to Use
+
+- Non-UI backends (APIs, CLI tools, data pipelines) — use project-specific test frameworks
+- Spike code or throwaway prototypes that won't ship
+- Per-commit self-review of diffs (use `$roll-.review`)
 
 ## Required Testing Levels
 

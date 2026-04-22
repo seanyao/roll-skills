@@ -1,6 +1,7 @@
 ---
 hidden: true
 name: roll-.echo
+license: MIT
 description: |
   Passive intent clarification skill. Automatically activates when user input is vague, rambling, contradictory, or unclear. Restates the user's intent in structured, concise form and confirms before proceeding. Does NOT activate when intent is already clear — in that case, just execute directly.
   This is a passive skill. Never announce "I'm using roll-.echo." Just do it naturally: restate, confirm, proceed.
@@ -22,11 +23,13 @@ This skill fires **automatically** when the AI detects unclear intent. It should
 - Vague scope: "make it better", "fix this area", "do something about"
 - The intent could reasonably be interpreted in 2+ very different ways
 
-**Do NOT activate when**:
+## When Not to Use
+
 - Intent is already clear and actionable ("add a login button to the header")
-- User gives a specific command with a skill trigger ("$roll-story US-001")
+- User gives a specific command with a skill trigger ("$roll-build US-001")
 - User is answering a question you asked (they're clarifying, not initiating)
 - The task is simple enough that misinterpretation risk is negligible
+- User needs targeted Q&A to fill specific gaps (use `$roll-.clarify`)
 
 **When in doubt**: If you're 80%+ confident you understand correctly, just execute. Echo is for the 50/50 situations where getting it wrong would waste real effort.
 

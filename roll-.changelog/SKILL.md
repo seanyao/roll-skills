@@ -1,6 +1,7 @@
 ---
 hidden: true
 name: roll-.changelog
+license: MIT
 description: After build completion, extracts completed Stories from BACKLOG.md to generate CHANGELOG.md. Auto-triggered after successful deploy, keeping the external changelog in sync with the internal backlog.
 ---
 
@@ -10,8 +11,14 @@ After successful Build & Deploy, extracts completed Stories from BACKLOG.md to g
 
 ## When Triggered
 
-- **Auto-triggered**: After successful deploy of `$roll-story` or `$roll-fix`
+- **Auto-triggered**: After successful deploy of `$roll-build` or `$roll-fix`
 - **Manual trigger**: When user requests "update changelog" or "generate release notes"
+
+## When Not to Use
+
+- Generating commit messages or PR descriptions — this skill only runs post-deploy
+- Recording dev diary / moments (use `$roll-notes`)
+- Bumping package version (use `$roll-release`)
 
 ## Workflow
 
@@ -71,7 +78,7 @@ git push
 
 ## Integration
 
-After successful deploy in `$roll-story` / `$roll-fix` / `$roll-fly`:
+After successful deploy in `$roll-build` / `$roll-fix`:
 
 ```markdown
 **Post-Deploy:**

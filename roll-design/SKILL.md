@@ -1,5 +1,6 @@
 ---
 name: roll-design
+license: MIT
 description: Unified entry for discussion, design and planning. Explores options when uncertain, designs solutions, splits into INVEST-compliant user stories, and writes to BACKLOG.md. Use when user wants to discuss approaches, design solutions, plan features, or create stories.
 ---
 
@@ -23,6 +24,12 @@ Discuss approaches, design architecture, plan requirements, and write to `BACKLO
 - Solution design
 - Splitting into Stories
 - Creating US / FIX entries
+
+## When Not to Use
+
+- One-liner capture of ideas or bugs (use `$roll-jot`)
+- Executing an already-split US-XXX (use `$roll-build`)
+- Fixing a well-defined FIX-XXX (use `$roll-fix`)
 
 ## Quick Start
 
@@ -124,7 +131,7 @@ User: "Help me design the user system" / "What approach should we use for search
               ▼
     "Confirm and execute?"
     │
-    ├── Yes ──→ $roll-story US-XXX
+    ├── Yes ──→ $roll-build US-XXX
     │
     └── No  ──→ Wait for user confirmation
 ```
@@ -221,16 +228,16 @@ FEATURE_FILE="docs/features/${FEATURE}.md"
 
 ## Integration
 
-### With story-build
+### With roll-build
 
 ```
 $roll-design "login feature" → Create US-AUTH-001
 User: "Execute US-AUTH-001"
     ↓
-$roll-story US-AUTH-001 → TCR → CI/CD → Deploy
+$roll-build US-AUTH-001 → TCR → CI/CD → Deploy
 ```
 
-### With fix-build
+### With roll-fix
 
 ```
 $roll-debug discovers issue → Suggest creating FIX

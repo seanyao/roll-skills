@@ -1,6 +1,7 @@
 ---
 hidden: true
-name: roll-.code-review
+name: roll-.review
+license: MIT
 description: Self code review step in the TCR workflow. Runs after each micro-step is completed and before commit, checking code quality, security, and design issues.
 ---
 
@@ -21,8 +22,14 @@ TCR Loop:
 
 ## When Triggered
 
-- **Auto-triggered**: After each TCR micro-step in `$roll-story` / `$roll-fix` / `$roll-fly`
+- **Auto-triggered**: After each TCR micro-step in `$roll-build` / `$roll-fix`
 - **Manual trigger**: When the user wants to review current changes
+
+## When Not to Use
+
+- Docs-only changes (README, CHANGELOG) with no code diff
+- Test pyramid / coverage standards check (use `$roll-.qa`)
+- Post-deploy production sampling (use `$roll-sentinel`)
 
 ## Review Scope
 

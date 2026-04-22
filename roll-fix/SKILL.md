@@ -1,6 +1,7 @@
 ---
 name: roll-fix
-description: Execute bugfix/hotfix from backlog. Reads FIX/BUG from BACKLOG.md, delivers via TCR workflow. Lighter than story-build, focused on single-issue fixes.
+license: MIT
+description: Execute bugfix/hotfix from backlog. Reads FIX/BUG from BACKLOG.md, delivers via TCR workflow. Lighter than roll-build, focused on single-issue fixes.
 ---
 
 # Fix Ship (TCR Edition)
@@ -30,7 +31,7 @@ Do not use for:
 - Requirements that need planning and splitting first
 - Roadmap work that should be tracked as Stories
 
-If the issue expands beyond a single bounded change, switch to `roll-story`.
+If the issue expands beyond a single bounded change, switch to `roll-build`.
 
 ## Project Context Rule
 
