@@ -10,6 +10,19 @@ description: After build completion, extracts completed Stories from .roll/backl
 
 After successful Build & Deploy, extracts completed Stories from .roll/backlog.md to generate a user-friendly `CHANGELOG.md`.
 
+## Evidence marker（US-ATTEST-008 约定）
+
+写入 CHANGELOG 的每个条目，若对应 story 存在验收报告
+（`.roll/verification/<id>/latest/report.html`），在该 bullet 行的下一行追加
+不可见注释 marker（GitHub Release body 不渲染，grep 可追溯）：
+
+```markdown
+- 修复导出报表时间区间偏移（FIX-200）
+  <!-- evidence: .roll/verification/FIX-200/latest/report.html -->
+```
+
+报告不存在则不加（deletion-not-placeholder，与报告渲染同一契约）。
+
 ## When Triggered
 
 - **Auto-triggered**: After successful deploy of `$roll-build` or `$roll-fix`
