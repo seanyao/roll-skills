@@ -572,14 +572,34 @@ Follow the repo's deployment path (Vercel / Railway / etc.) and record the deplo
 
 **Hard Rule**: "I confirmed the tests passed" does not count as evidence. Must be **freshly run** command output from this session.
 
+### Phase 10.6: Acceptance Evidence (after Gate PASS)
+
+Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Phase 11.
+
+1. **Dump raw evidence** produced in this session to story-level dirs:
+   `.roll/verification/{ID}/evidence/*.txt` (command outputs, curl, logs) and
+   `.roll/verification/{ID}/screenshots/*.png` (when the story has a UI surface — web/iOS/Android per project type).
+2. **Write the intent map** `.roll/verification/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
+
+```json
+[{ "ac": "{ID}:AC1", "status": "pass",
+   "evidence": [{ "kind": "text", "label": "vitest", "textFile": "../evidence/vitest.txt" }] }]
+```
+
+   No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/verification/{ID}/latest/report.html`.
+
 ### Phase 11: Write Back Status (REQUIRED)
 
 Both locations must be updated — neither can be skipped:
 
 **① Update .roll/backlog.md index row (Status column):**
 
+**Location rule (FIX-198)**: edit the MAIN project's backlog by ABSOLUTE path — `${ROLL_MAIN_PROJECT:-$PWD}/.roll/backlog.md`. In ordinary projects the cycle worktree has NO `.roll/` (gitignored, never checked out): a relative `.roll/backlog.md` edit writes into the void and the flip silently vanishes.
+
+
 ```markdown
-| [US-{ID}](.roll/features/<feature>.md#us-{id}) | {Title} | ✅ Done |
+| [US-{ID}](.roll/features/<feature>.md#us-{id}) | {Title} | ✅ Done · [evidence](.roll/verification/US-{ID}/latest/report.html) |
 ```
 
 Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state, and the transition is the same Edit operation.
