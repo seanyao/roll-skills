@@ -344,13 +344,33 @@ Verify the shipped fix on the deployed target:
 Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Step 11.
 
 1. **Dump raw evidence** produced in this session to story-level dirs:
-   `.roll/verification/{ID}/evidence/*.txt` (command outputs, curl, logs) and
-   `.roll/verification/{ID}/screenshots/*.png` (when the story has a UI surface — web/iOS/Android per project type).
+   `.roll/verification/{ID}/screenshots/*.png` — the DEFAULT evidence class for
+   every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
+   own report (nothing stops a fabricated `echo "✓ passed" > evidence.txt`); a
+   screenshot is an OS-level capture of really-rendered pixels — an independent
+   channel with a categorically higher forgery cost. Combined with the
+   never-overwritten run dirs (D4) and the render-layer red line, it is the
+   strongest link in the evidence chain.
+   `.roll/verification/{ID}/evidence/*.txt` — supplementary (searchable,
+   copyable); keep raw command outputs here, but do not let a text file be the
+   ONLY evidence for an AC that has a visible surface.
+
+   **CLI capture recipe**: run the verifying command in a REAL terminal (the
+   tmux observation window `roll-loop-<slug>` is a natural target — display the
+   proof there), then `screencapture -x -R <window-rect>` (macOS) into
+   `screenshots/`. Capture ONLY the relevant work area — a focused window, not
+   the whole desktop. Unattended cycles: drive the capture from the dispatcher
+   (deterministic), never hand-craft an image; if the capture channel is
+   unavailable (no GUI session / no permission), fall back to text evidence and
+   mark the AC `partial` with a note — never fake a screenshot.
 2. **Write the intent map** `.roll/verification/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
 
 ```json
 [{ "ac": "{ID}:AC1", "status": "pass",
-   "evidence": [{ "kind": "text", "label": "vitest", "textFile": "../evidence/vitest.txt" }] }]
+   "evidence": [
+     { "kind": "screenshot", "label": "terminal run (real pixels)", "href": "../screenshots/ac1-terminal.png" },
+     { "kind": "text", "label": "vitest (supplementary)", "textFile": "../evidence/vitest.txt" }
+   ] }]
 ```
 
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
