@@ -576,6 +576,12 @@ Follow the repo's deployment path (Vercel / Railway / etc.) and record the deplo
 
 Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Phase 11.
 
+0. **Before/after pairing (owner ruling 2026-06-06)**: when the story CHANGES
+   existing behavior, capture the prior state (`screenshots/before-*.png`)
+   before building and the new state (`screenshots/after-*.png`) at acceptance —
+   contrast is the clearest evidence. Brand-new capability with no prior state:
+   skip the pair; capture the new surface only.
+
 1. **Dump raw evidence** produced in this session to story-level dirs:
    `.roll/verification/{ID}/screenshots/*.png` — the DEFAULT evidence class for
    every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
