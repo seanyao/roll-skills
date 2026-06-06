@@ -116,7 +116,7 @@ If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible),
 
 ### Step 1: Read the Story
 
-1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<feature>.md`
+1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<epic>/<story>/spec.md`
 2. Read the full AC / Files / Dependencies section
 3. If a plan doc (`<feature>-plan.md`) exists, read it for context
 
@@ -233,7 +233,7 @@ Wait for the user's response before editing files. If the user does not object w
 
 - Use `$roll-design` to split vague request into INVEST-compliant User Stories
 - Insert US into `.roll/backlog.md` under the relevant Epic > Feature group
-- If a new `.roll/features/<feature>.md` is needed, create it
+- If a new story folder is needed, create `.roll/features/<epic>/<story>/spec.md` (with `roll idea` or manually)
 
 After creation, switch to **Story mode** and execute the first US immediately.
 
@@ -359,7 +359,7 @@ When any signal appears, **do not stop — flag it**:
 | REFACTOR-001 | {one-line plain-language description} | 📋 Todo |
 ```
 
-描述写法：参见 AGENTS.md "Backlog descriptions" 规则。说清楚"什么需要改"以及"不改会怎样"，技术细节写在 `.roll/features/autonomous-evolution/refactor-log.md`。
+描述写法：参见 AGENTS.md "Backlog descriptions" 规则。说清楚"什么需要改"以及"不改会怎样"，技术细节写在 `.roll/features/<epic>/refactor-log.md`。
 
 **refactor-log.md entry format:**
 
@@ -647,13 +647,13 @@ Both locations must be updated — neither can be skipped:
 
 
 ```markdown
-| [US-{ID}](.roll/features/<feature>.md#us-{id}) | {Title} | ✅ Done · [evidence](.roll/verification/US-{ID}/latest/report.html) |
+| [US-{ID}](.roll/features/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/US-{ID}/delivery/latest/report.html) |
 ```
 
 Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state, and the transition is the same Edit operation.
 For Fly mode: first append an index row under the appropriate Epic > Feature group, then mark it done.
 
-**② Update `.roll/features/<feature>.md` US section:**
+**② Update `.roll/features/<epic>/<story>/spec.md`:**
 
 ```markdown
 ## US-{ID} {Story Title} ✅

@@ -20,7 +20,7 @@ Use when:
 - It does not need to be split into multiple Stories / Actions to deliver
 
 **Workflow:**
-1. Read .roll/backlog.md index → Find FIX/BUG row → Follow link to `.roll/features/<feature>.md`
+1. Read .roll/backlog.md index → Find FIX/BUG row → Follow link to `.roll/features/<epic>/<story>/spec.md`
 2. Single Action (no splitting)
 3. Execute via TCR workflow
 4. Write back: update .roll/backlog.md status column + update FIX section in Feature file
@@ -419,12 +419,12 @@ Both locations must be updated — neither can be skipped:
 
 
 ```markdown
-| [FIX-{ID}](.roll/features/<feature>.md#fix-{id}) | {Title} | ✅ Done · [evidence](.roll/verification/FIX-{ID}/latest/report.html) |
+| [FIX-{ID}](.roll/features/<epic>/FIX-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/FIX-{ID}/delivery/latest/report.html) |
 ```
 
 Change the Status of the corresponding row from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state.
 
-**② Update `.roll/features/<feature>.md` FIX section:**
+**② Update `.roll/features/<epic>/<story>/spec.md`:**
 
 ```markdown
 ## FIX-{ID} {description} ✅

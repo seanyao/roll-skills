@@ -102,32 +102,40 @@ Bug Fix 信号:
 
 ## Workspace Configuration
 
-Document structure (two-layer separation):
+Document structure (story-first layout, US-META-005):
 
 ```
-.roll/backlog.md                          # US index page (status + one-liner + link)
+.roll/backlog.md                          # story index (status + one-liner)
 .roll/features/
-  <feature>.md                      # US details (AC / Files / Dependencies)
-  <feature>-plan.md                 # Design document (why / how)
-.roll/domain/                        # DDD domain model (greenfield / cross-feature)
-  context-map.md                    # Bounded Contexts + 关系图
-  ubiquitous-language.md            # 统一语言词汇表
-  <context>-model.md                # 每个 Context 的 Tactical Model
+  <epic>/                                 # epic folder
+    <feature>.md                          # feature design doc (optional, multi-story overview)
+    <feature>-plan.md                     # design plan (optional)
+    <story>/                              # individual story folder (one per card)
+      spec.md                             # story definition (AC, depends-on, etc.)
+      index.html                          # auto-generated story portal
+      delivery/                           # attest evidence (auto-generated on Done)
+.roll/domain/                             # DDD domain model
+  context-map.md
+  ubiquitous-language.md
 ```
 
 **Important rules:**
-1. Plan files go in `.roll/features/<feature>-plan.md` (**no longer using** `docs/plans/`)
-2. US details go in the corresponding `.roll/features/<feature>.md`
-3. **FIX / IDEA detail files use ID-prefixed filenames**: `.roll/features/<epic>/FIX-097.md`, not `.roll/features/<epic>/some-descriptive-slug.md`. Reason: a single FIX is one card, not a long-lived feature; the ID is the most stable handle, descriptive slugs date quickly and break links. US can keep feature-slug naming (US lives inside a multi-Story feature file). Quick lookup: `ls .roll/features/<epic>/FIX-*.md` finds all bugs in that area without grepping content.
-4. .roll/backlog.md only contains index rows (one row per US), **do not write** AC / Files / Notes
-5. Domain model files go in `.roll/domain/` — create on first greenfield design, update incrementally
-6. **Do not** write to `~/.kimi/`, `~/.kimi-code/`, or any global config directory
+1. **Every story card gets its own folder**: `features/<epic>/<story>/`
+2. **spec.md is the single definition file** — contains full AC, Files, Dependencies
+3. **FIX / IDEA / US all follow the same folder layout** — `features/<epic>/FIX-097/spec.md`
+4. **Feature design docs stay at epic root** — `<feature>.md` and `<feature>-plan.md` are optional, multi-story design overviews
+5. **index.html is auto-generated** by `roll idea` (skeleton) and updated by `roll attest` (delivery section)
+6. **delivery/ is auto-created** by `roll attest` on Done — do not create manually
+7. .roll/backlog.md only contains index rows (one row per story), **do not write** AC / Files there
+8. Domain model files go in `.roll/domain/`
+9. **Do not** write to `~/.kimi/`, `~/.kimi-code/`, or any global config directory
 
-**File path resolution order:**
-1. Determine Feature ownership (based on the requirement domain: compiler / ingest / qa / ...)
-2. Feature file: `.roll/features/<feature>.md` (create if it doesn't exist)
-3. Plan file: `.roll/features/<feature>-plan.md` (create if it doesn't exist)
-4. .roll/backlog.md index row goes under the corresponding Epic > Feature group
+**File path resolution:**
+1. Determine epic from story ID prefix (e.g., US-META-* → backlog-lifecycle, FIX-* → query index.json)
+2. Create story folder: `.roll/features/<epic>/<story>/`
+3. Write spec.md: `.roll/features/<epic>/<story>/spec.md` (full AC + details)
+4. Backlog row links to: `.roll/features/<epic>/<story>/spec.md`
+5. Design / plan docs (when needed): `.roll/features/<epic>/<feature>.md` + `<feature>-plan.md`
 
 ## Non-Interactive Mode
 
@@ -633,10 +641,10 @@ Do **not** infer "approach confirmed" from the user's reaction to the comparison
 FEATURE="compiler"
 
 # 2. Write Plan document (if there is a solution design)
-PLAN_FILE=".roll/features/${FEATURE}-plan.md"
+PLAN_FILE=".roll/features/${EPIC}/${FEATURE}-plan.md"
 
-# 3. Append US section in .roll/features/<feature>.md (with full AC)
-FEATURE_FILE=".roll/features/${FEATURE}.md"
+# 3. Write story spec: .roll/features/<epic>/<story>/spec.md (full AC)
+# Story specs: .roll/features/<epic>/<story>/spec.md
 
 # 4. Append index row under the corresponding Epic > Feature group in .roll/backlog.md
 # | [US-XXX](.roll/features/compiler.md#us-xxx) | One-line description | 📋 Todo |
@@ -655,7 +663,7 @@ DOMAIN_DIR=".roll/domain/"
 **.roll/backlog.md index row (only write this one line):**
 
 ```markdown
-| [US-{DOMAIN}-{N}](.roll/features/<feature>.md#us-{domain}-{n}) | {one-line description} | 📋 Todo |
+| [US-{DOMAIN}-{N}](.roll/features/<epic>/US-{DOMAIN}-{N}/spec.md) | {one-line description} | 📋 Todo |
 ```
 
 `{one-line description}` 写法：用户能读懂的一句话，说清楚"能做什么"或"解决了什么麻烦"。不写实现细节、文件路径、函数名。细节和 AC 写在 `.roll/features/` 里。写好了可以直接当 CHANGELOG 条目用。
@@ -770,11 +778,11 @@ Each story must be:
 ### Feature Name
 | Story | Description | Status |
 |-------|-------------|--------|
-| [US-XXX](.roll/features/<feature>.md#us-xxx) | One-line description | 📋 Todo |
-| [US-YYY](.roll/features/<feature>.md#us-yyy) | One-line description | ✅ Done |
+| [US-XXX](.roll/features/<epic>/<story>/spec.md#us-xxx) | One-line description | 📋 Todo |
+| [US-YYY](.roll/features/<epic>/<story>/spec.md#us-yyy) | One-line description | ✅ Done |
 ```
 
-**Note**: .roll/backlog.md only contains index rows; full AC / Files / Dependencies go in `.roll/features/<feature>.md`.
+**Note**: .roll/backlog.md only contains index rows; full AC / Files / Dependencies go in `.roll/features/<epic>/<story>/spec.md`.
 
 ---
 
