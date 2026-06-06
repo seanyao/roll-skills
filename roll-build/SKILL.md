@@ -613,7 +613,29 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
 ```
 
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
-3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/verification/{ID}/latest/report.html`.
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/verification/{ID}/latest/report.html`. The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + self-score).
+4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
+   renders, open it and run the checklist below. This is a presentation review of
+   the rendered HTML, NOT an evidence review.
+   **HARD RULE: this checklist NEVER changes any AC's status, evidence, or
+   `pass|readonly|partial|fail|blocked|claimed|missing` verdict.** Those are
+   fixed at step 2 (the ac-map) and enforced by the render-layer red line. If a
+   readability item fails, fix the *presentation* (a missing context field, an
+   uncropped screenshot, a layout overflow) — never edit a verdict to make the
+   report look cleaner.
+   - [ ] **首屏 10s 可懂** — a product/business reviewer grasps what shipped and
+     whether it passed within ten seconds, without scrolling into the technical fold.
+   - [ ] **390 / 320px 无横滚** — no horizontal scroll at mobile widths; before/after
+     pairs stack rather than overflow.
+   - [ ] **打印可读** — print preview (or print-to-PDF) is legible; AC cards don't
+     split awkwardly across pages.
+   - [ ] **状态不只靠颜色** — every status reads from its icon + bilingual word, not
+     color alone (colorblind-safe).
+   - [ ] **截图裁切与清晰度** — screenshots are cropped to the relevant work area and
+     legible; no full-desktop captures, no blurry/half-rendered frames.
+   If you cannot open the report (headless cycle), note that the design QA was
+   deferred and say so in the cycle report — do NOT silently skip it, and do NOT
+   substitute it for an evidence judgement.
 
 ### Phase 11: Write Back Status (REQUIRED)
 
