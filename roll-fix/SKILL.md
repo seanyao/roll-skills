@@ -353,14 +353,14 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    "before".
 
 1. **Dump raw evidence** produced in this session to story-level dirs:
-   `.roll/verification/{ID}/screenshots/*.png` — the DEFAULT evidence class for
+   `.roll/features/<epic>/{ID}/screenshots/*.png` — the DEFAULT evidence class for
    every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
    own report (nothing stops a fabricated `echo "✓ passed" > evidence.txt`); a
    screenshot is an OS-level capture of really-rendered pixels — an independent
    channel with a categorically higher forgery cost. Combined with the
    never-overwritten run dirs (D4) and the render-layer red line, it is the
    strongest link in the evidence chain.
-   `.roll/verification/{ID}/evidence/*.txt` — supplementary (searchable,
+   `.roll/features/<epic>/{ID}/evidence/*.txt` (resolve `<epic>` via `.roll/index.json`; `roll attest` writes the report there as `{ID}-report.html`) — supplementary (searchable,
    copyable); keep raw command outputs here, but do not let a text file be the
    ONLY evidence for an AC that has a visible surface.
 
@@ -372,7 +372,7 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    (deterministic), never hand-craft an image; if the capture channel is
    unavailable (no GUI session / no permission), fall back to text evidence and
    mark the AC `partial` with a note — never fake a screenshot.
-2. **Write the intent map** `.roll/verification/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
+2. **Write the intent map** `.roll/features/<epic>/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
 
 ```json
 [{ "ac": "{ID}:AC1", "status": "pass",
@@ -383,7 +383,7 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
 ```
 
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
-3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/verification/{ID}/latest/report.html`. The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + self-score). A FIX usually carries a before/after pair (`screenshots/before-*.png` + `after-*.png`) — the坏态/好态 contrast is the clearest proof a bug is gone.
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + self-score). A FIX usually carries a before/after pair (`screenshots/before-*.png` + `after-*.png`) — the坏态/好态 contrast is the clearest proof a bug is gone.
 4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
    renders, open it and run the checklist below. This is a presentation review of
    the rendered HTML, NOT an evidence review.
