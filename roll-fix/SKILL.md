@@ -343,6 +343,15 @@ Verify the shipped fix on the deployed target:
 
 Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Step 11.
 
+0. **Before/after pairing (owner ruling 2026-06-06)**: for a FIX, capture the
+   BROKEN state at reproduction time (screenshot when the surface is visible —
+   terminal run, panel, page) into `screenshots/before-*.png`; after the fix
+   passes, capture the SAME surface into `screenshots/after-*.png`. The pair is
+   the strongest possible fix evidence — reviewers see the delta, not a claim.
+   Behavior-changing stories: same pattern where a prior state exists.
+   Brand-new capability with nothing to contrast: skip — never stage a fake
+   "before".
+
 1. **Dump raw evidence** produced in this session to story-level dirs:
    `.roll/verification/{ID}/screenshots/*.png` — the DEFAULT evidence class for
    every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
