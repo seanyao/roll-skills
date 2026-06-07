@@ -500,7 +500,7 @@ A minor change is only "done" when all are true:
 ### Self-score (US-SKILL-011)
 
 Before exiting the cycle, write one self-score note. The helper validates
-inputs and lands the note under `.roll/notes/<date>-roll-fix-<FIX-id>-<epoch>.md`:
+inputs and lands the note under `.roll/features/<epic>/<FIX-id>/notes/<date>-roll-fix-<FIX-id>-<epoch>.md` (the card folder is the note home, US-META-008; resolve <epic> via .roll/index.json):
 
 ```bash
 bash -c 'source "$(command -v roll)"; \

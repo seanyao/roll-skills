@@ -782,7 +782,7 @@ Before creating any file or directory:
 ### Self-score (US-SKILL-012)
 
 Before reporting completion to the user, write one self-score note. The
-helper lands the note under `.roll/notes/<date>-roll-build-<US-id>-<epoch>.md`
+helper lands the note under `.roll/features/<epic>/<US-id>/notes/<date>-roll-build-<US-id>-<epoch>.md` (the card folder is the note home, US-META-008; resolve <epic> via .roll/index.json)
 with YAML frontmatter so trend analysis (US-SKILL-014) can aggregate later:
 
 ```bash
