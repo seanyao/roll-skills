@@ -132,8 +132,9 @@ Document structure (story-first layout, US-META-005):
 
 **File path resolution:**
 1. Determine epic from story ID prefix (e.g., US-META-* → backlog-lifecycle, FIX-* → query index.json)
-2. Create story folder: `.roll/features/<epic>/<story>/`
-3. Write spec.md: `.roll/features/<epic>/<story>/spec.md` (full AC + details)
+2. Mint the card via the single channel (US-META-009 — never hand-create the folder):
+   `roll story new <ID> --title "<one-line title>" --epic <epic>`
+3. Then EDIT the minted spec.md to add the full AC / Files / Dependencies / Agent profile
 4. Backlog row links to: `.roll/features/<epic>/<story>/spec.md`
 5. Design / plan docs (when needed): `.roll/features/<epic>/<feature>.md` + `<feature>-plan.md`
 

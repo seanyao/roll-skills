@@ -233,7 +233,7 @@ Wait for the user's response before editing files. If the user does not object w
 
 - Use `$roll-design` to split vague request into INVEST-compliant User Stories
 - Insert US into `.roll/backlog.md` under the relevant Epic > Feature group
-- If a new story folder is needed, create `.roll/features/<epic>/<story>/spec.md` (with `roll idea` or manually)
+- If a new story folder is needed, mint it via `roll story new <ID> --title <t> --epic <e>` (the single channel, US-META-009), then edit the spec
 
 After creation, switch to **Story mode** and execute the first US immediately.
 
