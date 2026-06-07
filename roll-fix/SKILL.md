@@ -419,7 +419,7 @@ Both locations must be updated — neither can be skipped:
 
 
 ```markdown
-| [FIX-{ID}](.roll/features/<epic>/FIX-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/FIX-{ID}/delivery/latest/report.html) |
+| [FIX-{ID}](.roll/features/<epic>/FIX-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/FIX-{ID}/latest/FIX-{ID}-report.html) |
 ```
 
 Change the Status of the corresponding row from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state.

@@ -501,9 +501,9 @@ cannot fulfill these requirements.
 
 ### Local cron (default)
 
-Install once with `roll loop on` — it reads the configured agent from
-`.roll.yaml` or `~/.roll/config.yaml` and writes the correct cron entry
-automatically. No agent-specific command needed.
+Install once with `roll loop on` — agent selection happens per cycle from the
+`.roll/agents.yaml` complexity slots (easy/default/hard/fallback), so the cron
+entry is agent-agnostic. No agent-specific command needed.
 
 ```bash
 roll loop on      # install cron for loop + dream + brief

@@ -647,7 +647,7 @@ Both locations must be updated — neither can be skipped:
 
 
 ```markdown
-| [US-{ID}](.roll/features/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/US-{ID}/delivery/latest/report.html) |
+| [US-{ID}](.roll/features/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/US-{ID}/latest/US-{ID}-report.html) |
 ```
 
 Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state, and the transition is the same Edit operation.
