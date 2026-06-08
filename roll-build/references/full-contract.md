@@ -52,7 +52,7 @@ Do not use for:
 
 Activate when input is a `US-[A-Z]+-[0-9]+` identifier.
 
-### Step 0: Pre-flight self-check (US-AGENT-007)
+### Step A1: Pre-flight self-check (US-AGENT-007)
 
 Before reading the Story in depth or splitting actions, **read the Agent profile** from the story's feature md and decide whether this cycle can realistically deliver it. The check is mechanical and turns on a single axis — the story's `est_min` estimate (US-AGENT-022 retired the old three-dimension type/est/risk routing; there is no per-agent capacity range, risk zone, or history threshold anymore):
 
@@ -83,7 +83,7 @@ verdict: ok    # or: too_big
 reason: <one short line — which condition triggered, with numbers>
 ```
 
-When `verdict: ok` → continue to Step 1 normally.
+When `verdict: ok` → continue to Step A2 normally.
 When `verdict: too_big` → go to **US-AGENT-008 self-downgrade path**, **but** first run the **US-AGENT-009 chain_depth cap check**:
 
 ```bash
@@ -113,13 +113,13 @@ If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible),
 
 > Pre-flight is honest, not paranoid: a small story (est_min ≤ 8 — the `easy` tier — with chain_depth=0) should almost always go `ok`. The check pays off on the long tail — stories with a large `est_min` that, on inspection, plainly compose far more files and behaviours than one cycle can land green.
 
-### Step 1: Read the Story
+### Step A2: Read the Story
 
 1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<epic>/<story>/spec.md`
 2. Read the full AC / Files / Dependencies section
 3. If a plan doc (`<feature>-plan.md`) exists, read it for context
 
-### Step 2: Split into Actions
+### Step A3: Split into Actions
 
 - Write 2–6 candidate Actions
 - Pick the smallest shippable Action first
@@ -136,7 +136,7 @@ If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible),
      helper, redirect the env var to a tmp dir, or move the test to an
      integration tier where the boundary is intentional and documented.
 
-#### 2.5 Parallel Dispatch (auto-determined)
+#### A3.1 Parallel Dispatch (auto-determined)
 
 After splitting Actions, check if they can run in parallel:
 
@@ -175,13 +175,13 @@ git worktree add .worktrees/{action-id} -b dispatch/{action-id}
 
 When parallel conditions are not met, execute Actions sequentially.
 
-### Step 3: Define Verification
+### Step A4: Define Verification
 
 - Test matrix: happy path + edge/failure/regression cases
 - What "online verification" means for this repo (URL, endpoint, UI flow, log signal)
 - Reference `$roll-.qa` for test pyramid (unit → E2E → visual → smoke)
 
-Proceed to the **Shared TCR Workflow** (Phase 4 onward).
+Proceed to the **Shared TCR Workflow** (Phase 1 onward).
 
 ---
 
@@ -189,7 +189,7 @@ Proceed to the **Shared TCR Workflow** (Phase 4 onward).
 
 Activate when input does not match any `US-XXX` / `FIX-XXX` pattern, or when no input is given.
 
-### Phase 1: Clarify & Assess
+### Step B1: Clarify & Assess
 
 Before any code, assess clarity:
 
@@ -228,7 +228,7 @@ Wait for the user's response before editing files. If the user does not object w
 | Medium | Crosses modules, needs trade-offs, 15–30 min | Mini-plan then implement |
 | Large | Multi-step, architectural, 30–60 min+ | Full plan + split into Actions via `$roll-design` |
 
-### Phase 2: Create US / Actions
+### Step B2: Create US / Actions
 
 - Use `$roll-design` to split vague request into INVEST-compliant User Stories
 - Insert US into `.roll/backlog.md` under the relevant Epic > Feature group
@@ -236,7 +236,7 @@ Wait for the user's response before editing files. If the user does not object w
 
 After creation, switch to **Story mode** and execute the first US immediately.
 
-Proceed to the **Shared TCR Workflow** (Phase 4 onward).
+Proceed to the **Shared TCR Workflow** (Phase 1 onward).
 
 ---
 
@@ -244,7 +244,7 @@ Proceed to the **Shared TCR Workflow** (Phase 4 onward).
 
 The following phases apply to both Story mode and Fly mode after planning is complete.
 
-### Phase 3.5: Peer Review Gate
+### Phase 1: Peer Review Gate
 
 After planning is complete, before entering Test Design Review, assess whether the plan warrants peer review:
 
@@ -262,16 +262,16 @@ Press Enter to launch peer review, or type 'n' to skip. Auto-executing in 10s...
 ```
 
 **After peer review result:**
-- **AGREE** → proceed to Phase 4 (Test Design Review)
-- **REFINE** → incorporate feedback, regenerate plan, re-run Phase 3.5
-- **OBJECT** → consider alternative plan, re-run Phase 3.5 with revised proposal
+- **AGREE** → proceed to Phase 2 (Test Design Review)
+- **REFINE** → incorporate feedback, regenerate plan, re-run Phase 1
+- **OBJECT** → consider alternative plan, re-run Phase 1 with revised proposal
 - **ESCALATE** → present both proposals to user for final decision before proceeding
 
 **Never trigger:**
 - Single-file changes or well-defined fixes
 - Plans with no cross-module impact and no architecture decisions
 
-### Phase 4: Test Design Review
+### Phase 2: Test Design Review
 
 Before writing implementation code:
 
@@ -298,7 +298,7 @@ Reference `$roll-.qa` for coverage requirements and test pyramid strategy.
 
 **Why this phase**: TCR only guarantees code passes tests — verify tests are correct first.
 
-### Phase 5: TCR Implementation Loop
+### Phase 3: TCR Implementation Loop
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -380,7 +380,7 @@ Then continue implementing the current Story normally.
 _loop_event build "$US_ID" "${_tcr_count} commits" "" 2>/dev/null || true
 ```
 
-### Phase 5.5: E2E Deposit
+### Phase 4: E2E Deposit
 
 After TCR micro-steps pass, deposit an E2E test for this Story's core user flow.
 
@@ -406,10 +406,10 @@ E2E DEPOSIT
 **Rules:**
 - Follow whatever E2E patterns the project already uses — framework, directory, naming
 - If no E2E infrastructure exists, reference `$roll-.qa` "Missing Test Infrastructure" section to bootstrap minimally, then deposit
-- One test per Story — covers the golden path, not exhaustive edge cases (those are unit/integration from Phase 5)
+- One test per Story — covers the golden path, not exhaustive edge cases (those are unit/integration from Phase 3)
 - Each deposited E2E becomes a replayable case: CI runs it on every push, Sentinel can sample it against production
 
-### Phase 6: Pre-Push CI Gate
+### Phase 5: Pre-Push CI Gate
 
 After all micro-steps, run full CI locally before pushing:
 
@@ -449,13 +449,13 @@ EOF
 chmod +x .git/hooks/pre-push
 ```
 
-### Phase 7: Pre-Push Code Review (Three-Axis Deep Review)
+### Phase 6: Pre-Push Code Review (Three-Axis Deep Review)
 
 This phase runs **once per Story** (not per micro-step) on the full accumulated diff.
 Per-micro-step review uses `$roll-.review staged` inline checklist (zero extra cost).
 
-**Phase 3.5 vs Phase 7 split**: Phase 3.5 (Peer Review) focuses on architectural direction
-and approach before coding begins. Phase 7 focuses on implementation quality after all
+**Phase 1 vs Phase 6 split**: Phase 1 (Peer Review) focuses on architectural direction
+and approach before coding begins. Phase 6 focuses on implementation quality after all
 micro-steps are done — catching issues that only appear at diff scale (parameter sprawl
 across files, copy-paste patterns, cross-file N+1, etc.).
 
@@ -493,10 +493,10 @@ the full diff as a single-pass fallback — do not skip review entirely.
 ```
 🔴 Critical > 0 → Fix via new TCR cycle → Re-review
 🟡 Warnings > 0 → Fix if quick (< 5 min) or document
-🟢 Suggestions / ✅ All clear → Proceed to Phase 8
+🟢 Suggestions / ✅ All clear → Proceed to Phase 7
 ```
 
-### Phase 8: Commit & Push (branch + PR — NEVER direct to main)
+### Phase 7: Commit & Push (branch + PR — NEVER direct to main)
 
 `main` is PR-protected. Push the worktree's branch and open a PR — never
 `git push origin main`. (When invoked by `roll-loop`, the runner already
@@ -504,9 +504,9 @@ created the worktree + branch and opens the PR; this is the manual-path
 equivalent.)
 
 ```bash
-# All TCR micro-commits are already made on the worktree's branch (Phase 0).
+# All TCR micro-commits are already made on the worktree's branch (step A3.1).
 git log --oneline -{n}                 # Review TCR commits
-git push -u origin <branch>            # the dispatch/<id> branch from Phase 0
+git push -u origin <branch>            # the dispatch/<id> branch from step A3.1
 gh pr create --title "{story-id}: …" --body "…"
 # After CI is green: gh pr merge --rebase
 ```
@@ -521,7 +521,7 @@ Commit message (if squashing):
 - TCR: {n} micro-commits
 ```
 
-### Phase 9: Watch CI & Deploy
+### Phase 8: Watch CI & Deploy
 
 ```
 ⏳ CI Running...
@@ -548,13 +548,13 @@ Follow the repo's deployment path (Vercel / Railway / etc.) and record the deplo
    └── Get user approval to proceed
 ```
 
-### Phase 10: Runtime Verification
+### Phase 9: Runtime Verification
 
 - **Web apps**: verify on deployed URL (happy path, edge cases, no regression)
 - **CLI tools**: verify via command execution
 - **Libraries**: verify via test usage or example scripts
 
-### Phase 10.5: Verification Gate (MANDATORY)
+### Phase 10: Verification Gate (MANDATORY)
 
 **Before marking as DONE, fresh evidence must be provided.**
 
@@ -574,9 +574,9 @@ Follow the repo's deployment path (Vercel / Railway / etc.) and record the deplo
 
 **Hard Rule**: "I confirmed the tests passed" does not count as evidence. Must be **freshly run** command output from this session.
 
-### Phase 10.6: Acceptance Evidence (after Gate PASS)
+### Phase 11: Acceptance Evidence (after Gate PASS)
 
-Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Phase 11.
+Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Phase 12.
 
 0. **Before/after pairing (owner ruling 2026-06-06)**: when the story CHANGES
    existing behavior, capture the prior state (`screenshots/before-*.png`)
@@ -639,7 +639,7 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    deferred and say so in the cycle report — do NOT silently skip it, and do NOT
    substitute it for an evidence judgement.
 
-### Phase 11: Write Back Status (REQUIRED)
+### Phase 12: Write Back Status (REQUIRED)
 
 Both locations must be updated — neither can be skipped:
 
@@ -691,7 +691,7 @@ git commit -m "docs: mark {US-ID} as completed"
 git push
 ```
 
-### Phase 12: Report & Celebrate
+### Phase 13: Report & Celebrate
 
 ```
 ✅ $(msg build.pushed_to)
@@ -786,7 +786,7 @@ Before creating any file or directory:
 - [ ] **Verification Gate passed** (fresh evidence for tests, build, deploy, no regression)
 - [ ] **.roll/backlog.md index status updated** (📋 → ✅, REQUIRED)
 - [ ] **`.roll/features/<feature>.md` US section updated** (Completed date + [x] ACs, REQUIRED)
-- [ ] **CHANGELOG.md staged and bundled** into completion commit via `$roll-.changelog` in Phase 11 (REQUIRED)
+- [ ] **CHANGELOG.md staged and bundled** into completion commit via `$roll-.changelog` in Phase 12 (REQUIRED)
 - [ ] **Self-score note written (US-SKILL-010 / 012)** — see "Self-score" subsection below
 - [ ] Summary reported to user
 
@@ -841,7 +841,7 @@ If refactoring during green state:
 ```
 If implementation reveals test design flaw:
    1. Revert current micro-step
-   2. Return to Phase 4 (Test Design Review)
+   2. Return to Phase 2 (Test Design Review)
    3. Update test design
    4. Resume TCR cycles
 ```
