@@ -2,10 +2,14 @@
 name: roll-idea
 license: MIT
 allowed-tools: "Read, Edit"
-description: "Fast backlog capture. Analyzes a short description, classifies it as bug or idea, and appends it to .roll/backlog.md with an auto-incremented ID."
+description: "Load when the user gives a short idea or bug note that should be quickly classified, assigned an ID, and appended to backlog."
 ---
-
 # roll-idea
+
+## Gotchas
+
+- Capture is intentionally shallow; do not expand into full DDD stories unless roll-design is invoked.
+- Do not overwrite existing backlog numbering or statuses while appending the quick capture.
 
 > One-liner in, backlog entry out. No questions asked.
 

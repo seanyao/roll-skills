@@ -2,10 +2,14 @@
 name: roll-review-pr
 license: MIT
 allowed-tools: "Read"
-description: "Agent-agnostic PR review skill. Reviews a pull request diff and emits a structured 3-state verdict (APPROVE / REQUEST_CHANGES / UNCERTAIN). Used by `roll review-pr` and `_loop_pr_review_external`."
+description: "Load when reviewing a pull request diff and emitting APPROVE, REQUEST_CHANGES, or UNCERTAIN with file/line-grounded findings."
 ---
-
 # PR Review
+
+## Gotchas
+
+- Return a three-state verdict with concrete findings; do not approve by silence when evidence is missing.
+- This reviews PR diffs, not local TCR micro-steps or adversarial test design.
 
 > Follows the Architecture Constraints, Development Discipline, and Engineering
 > Common Sense defined in the project AGENTS.md.

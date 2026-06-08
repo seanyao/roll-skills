@@ -1,0 +1,883 @@
+# Full Contract Reference
+
+This file preserves the detailed contract extracted from SKILL.md. Read it when the hub points here for exact workflow steps, templates, rubrics, or recovery branches.
+
+---
+
+# Roll Build (Universal Delivery)
+
+> Follows the Architecture Constraints, Development Discipline, and Engineering Common Sense defined in the project AGENTS.md.
+
+One entry point. Any input. Full delivery.
+
+## Trigger
+
+**Input detection:**
+
+```
+Input received
+  ├── matches "US-[A-Z]+-[0-9]+"  → Story mode: read BACKLOG → TCR workflow
+  ├── matches "FIX-[A-Z]+-[0-9]+" → redirect to $roll-fix
+  ├── matches "IDEA-[0-9]+"       → redirect to $roll-idea (lookup and expand)
+  └── anything else               → Fly mode: clarify → design → execute
+```
+
+**Story mode** — use when:
+- The user provides a `US-XXX` identifier
+- An existing backlog Story needs to be executed
+
+**Fly mode** — use when:
+- The user has a vague one-sentence request
+- No `US-XXX` exists yet; planning and execution are both needed
+- No input at all — ask the user what they want to build
+
+**Redirect to `$roll-fix`** when:
+- Input matches `FIX-XXX` or `BUG-XXX` pattern
+
+Do not use for:
+- Pure analysis or research with no code changes (use `$roll-design`)
+- Single-line hotfix with no planning needed (use `$roll-fix`)
+
+## Core Philosophy
+
+1. **Clarity over assumptions** — When scope is unclear, clarify first
+2. **Just enough planning** — Plan to the level the uncertainty demands
+3. **TCR rhythm** — Test-first, micro-steps, auto-commit on green, auto-revert on red
+4. **Push to GitHub** — Complete implementation, commit, and push; code is on remote
+5. **Stay reversible** — Every micro-step leaves the repo in a clean, green state
+
+---
+
+## Mode A: Story Mode (US-XXX input)
+
+Activate when input is a `US-[A-Z]+-[0-9]+` identifier.
+
+### Step 0: Pre-flight self-check (US-AGENT-007)
+
+Before reading the Story in depth or splitting actions, **read the Agent profile** from the story's feature md and decide whether this cycle can realistically deliver it. The check is mechanical and turns on a single axis — the story's `est_min` estimate (US-AGENT-022 retired the old three-dimension type/est/risk routing; there is no per-agent capacity range, risk zone, or history threshold anymore):
+
+```
+inputs:
+  story.est_min       (from **Agent profile:** block, US-AGENT-001)
+  story.chain_depth   (0 unless already a downgrade product)
+
+complexity tier (lib/loop_pick_agent.py, single source of truth):
+  est_min <= 8        → easy
+  8 < est_min <= 20   → default
+  est_min > 20        → hard
+  missing / illegal   → default
+
+verdict:
+  too_big when:
+    story.est_min is large enough that even the `hard` tier won't fit one
+    cycle — i.e. the work plainly composes too many files / behaviours to
+    land green in a single cycle — AND story.chain_depth == 0
+    (still have downgrade budget; don't burn a cycle on a guaranteed miss).
+  ok otherwise
+```
+
+Output the verdict as the first line of the cycle response:
+
+```yaml
+verdict: ok    # or: too_big
+reason: <one short line — which condition triggered, with numbers>
+```
+
+When `verdict: ok` → continue to Step 1 normally.
+When `verdict: too_big` → go to **US-AGENT-008 self-downgrade path**, **but** first run the **US-AGENT-009 chain_depth cap check**:
+
+```bash
+# 0a. Cap check: refuse the third consecutive auto-split.
+#     exit 0 → split allowed; exit 1 → cap hit, take cap-hit path instead.
+if ! bash -c 'source "$(command -v roll)"; _loop_chain_depth_cap_check US-XXX-NNN'; then
+  # Cap hit (chain_depth ≥ 2): hold + ALERT, exit cleanly.
+  bash -c 'source "$(command -v roll)"; _loop_split_cap_hit US-XXX-NNN "depth >= 2, human triage required"'
+  exit 0
+fi
+
+# 1. Invoke roll-design to re-split the story into smaller sub-stories.
+#    Each sub-story carries chain_depth = (parent.chain_depth + 1).
+#    Sub-stories land as 📋 Todo with depends-on:<parent> chained.
+Skill("roll-design", "--from-story US-XXX-NNN")
+
+# 2. After the sub-stories are written to BACKLOG, flip the parent
+#    to 🚫 Hold and emit the downgrade event. The helper handles ALERT.
+bash -c 'source "$(command -v roll)"; _loop_self_downgrade US-XXX-NNN "too_big: <reason from verdict>" "US-XXX-NNNa,US-XXX-NNNb"'
+
+# 3. Exit cleanly — no TCR commits this cycle. The next loop cycle picks
+#    up the first sub-story (which is smaller and should pass pre-flight).
+exit 0
+```
+
+If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible), fall through to **US-AGENT-009 cap-hit path** by invoking `_loop_split_cap_hit` directly. The cap is purely about stopping infinite split chains; even on the first re-split, if the design step gives up, the cap-hit handler raises ALERT for human triage.
+
+> Pre-flight is honest, not paranoid: a small story (est_min ≤ 8 — the `easy` tier — with chain_depth=0) should almost always go `ok`. The check pays off on the long tail — stories with a large `est_min` that, on inspection, plainly compose far more files and behaviours than one cycle can land green.
+
+### Step 1: Read the Story
+
+1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<epic>/<story>/spec.md`
+2. Read the full AC / Files / Dependencies section
+3. If a plan doc (`<feature>-plan.md`) exists, read it for context
+
+### Step 2: Split into Actions
+
+- Write 2–6 candidate Actions
+- Pick the smallest shippable Action first
+- **Granularity constraint**: Each Action completable in 2–5 minutes; split if larger
+- **No placeholders**: Action descriptions must be specific and directly executable
+- **Test-quality self-check (US-QA-011)** — for every Action that adds tests:
+  1. Tests call project functions / public command entry points; do NOT inline
+     external-tool behaviour (`sed`/`awk`/`grep`/`find`/`cut` pipelines that
+     duplicate logic already in `lib/` or `bin/`) — rubric ❼.
+  2. Tests sandbox filesystem state via `BATS_TMPDIR` (or equivalent); do NOT
+     touch or assert on paths outside this repo (`~/.codex`, `~/.kimi`,
+     `~/.roll/`, `/etc/...`) — rubric ❽.
+  3. If you can't satisfy (1) or (2), reshape the Action: extract a project
+     helper, redirect the env var to a tmp dir, or move the test to an
+     integration tier where the boundary is intentional and documented.
+
+#### 2.5 Parallel Dispatch (auto-determined)
+
+After splitting Actions, check if they can run in parallel:
+
+```
+Conflict detection:
+  ├── List files involved in each Action
+  ├── Same file → cannot parallelize, must run sequentially
+  ├── Same directory, different files → can parallelize
+  └── Different directories → safe to parallelize
+```
+
+**If 2+ Actions can run in parallel, automatically enable Worktree isolation:**
+
+```bash
+git worktree add .worktrees/{action-id} -b dispatch/{action-id}
+```
+
+- Each sub-agent executes TCR in its own worktree
+- Sub-agent briefs must be **self-contained** (include: what to do, where, how to verify, what not to do)
+- After all complete: review each → merge to main → run integration tests → clean up worktrees
+
+**Status notifications (required):**
+
+```
+🔀 $(msg build.parallel_dispatch N)
+
+  $(msg build.agent_running 1 "...")
+  $(msg build.agent_running 2 "...")
+
+  $(msg build.agent_done 1 "..." N)
+  $(msg build.agent_done 2 "..." N)
+
+🔀 $(msg build.merge_summary N N)
+🧪 $(msg build.integration_tests)
+```
+
+When parallel conditions are not met, execute Actions sequentially.
+
+### Step 3: Define Verification
+
+- Test matrix: happy path + edge/failure/regression cases
+- What "online verification" means for this repo (URL, endpoint, UI flow, log signal)
+- Reference `$roll-.qa` for test pyramid (unit → E2E → visual → smoke)
+
+Proceed to the **Shared TCR Workflow** (Phase 4 onward).
+
+---
+
+## Mode B: Fly Mode (free-text or no-input)
+
+Activate when input does not match any `US-XXX` / `FIX-XXX` pattern, or when no input is given.
+
+### Phase 1: Clarify & Assess
+
+Before any code, assess clarity:
+
+```
+🎯 $(msg build.clarified_goal): {1-2 sentences capturing user intent}
+📏 $(msg build.complexity_assessment): {small|medium|large}
+🔍 $(msg build.uncertainty_areas): {list what needs investigation/decision}
+```
+
+**If uncertainty areas are non-empty or the request is vague, auto-trigger `$roll-.clarify`:**
+- Output the clarification block above
+- Follow with 3–5 targeted questions
+- Stop and wait for user answers before proceeding
+
+**Approach Confirmation (required for UX / format / automation decisions):**
+
+If the request involves any of: output format, layout, automation level (manual vs automatic), or architecture structure — output a confirmation block **before writing any code**:
+
+```
+📐 $(msg build.approach_confirmation)
+
+   1. $(msg build.what_changes): {what will be built or modified}
+   2. $(msg build.the_approach): {specific format / automation level / structure chosen}
+   3. $(msg build.files_touched): {list of files}
+
+   Proceeding unless you say otherwise.
+```
+
+Wait for the user's response before editing files. If the user does not object within one exchange, proceed.
+
+**Complexity Rules (AI coding time):**
+
+| Level | Scope | Action |
+|-------|-------|--------|
+| Small | ≤3 files, 5–15 min, single concern | Skip detailed planning, implement directly |
+| Medium | Crosses modules, needs trade-offs, 15–30 min | Mini-plan then implement |
+| Large | Multi-step, architectural, 30–60 min+ | Full plan + split into Actions via `$roll-design` |
+
+### Phase 2: Create US / Actions
+
+- Use `$roll-design` to split vague request into INVEST-compliant User Stories
+- Insert US into `.roll/backlog.md` under the relevant Epic > Feature group
+- If a new story folder is needed, mint it via `roll story new <ID> --title <t> --epic <e>` (the single channel, US-META-009), then edit the spec
+
+After creation, switch to **Story mode** and execute the first US immediately.
+
+Proceed to the **Shared TCR Workflow** (Phase 4 onward).
+
+---
+
+## Shared TCR Workflow
+
+The following phases apply to both Story mode and Fly mode after planning is complete.
+
+### Phase 3.5: Peer Review Gate
+
+After planning is complete, before entering Test Design Review, assess whether the plan warrants peer review:
+
+**Auto-trigger `$roll-peer` when any of the following is true:**
+- Plan affects **>3 files** or **crosses modules**
+- **Architecture decisions** or non-obvious trade-offs are involved
+- **Destructive / irreversible operations** (deletions, migrations, production deploys)
+- **High-risk signal words** detected in user request ("critical / important / don't break / 关键 / 别搞砸")
+- User explicitly requests peer review ("/peer", "叫上 peer")
+
+**With 10s opt-out:**
+```
+Plan affects N files across M modules. Estimated peer review: 2–3 rounds, ~X tokens.
+Press Enter to launch peer review, or type 'n' to skip. Auto-executing in 10s...
+```
+
+**After peer review result:**
+- **AGREE** → proceed to Phase 4 (Test Design Review)
+- **REFINE** → incorporate feedback, regenerate plan, re-run Phase 3.5
+- **OBJECT** → consider alternative plan, re-run Phase 3.5 with revised proposal
+- **ESCALATE** → present both proposals to user for final decision before proceeding
+
+**Never trigger:**
+- Single-file changes or well-defined fixes
+- Plans with no cross-module impact and no architecture decisions
+
+### Phase 4: Test Design Review
+
+Before writing implementation code:
+
+```
+🧪 $(msg build.test_design): {Action name}
+
+   $(msg build.scenarios):
+   ├── {Happy path scenario}
+   ├── {Edge case scenario}
+   └── {Failure/regression scenario}
+
+   $(msg build.test_types):
+   ├── Unit tests for: {logic components}
+   ├── Integration tests for: {API/data flows}
+   └── Manual verification for: {UI/visual elements}
+```
+
+**Self-review on test design:**
+- Are we testing the right behavior?
+- Are edge cases covered?
+- Are tests independent and deterministic?
+
+Reference `$roll-.qa` for coverage requirements and test pyramid strategy.
+
+**Why this phase**: TCR only guarantees code passes tests — verify tests are correct first.
+
+### Phase 5: TCR Implementation Loop
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  $(msg build.tcr_cycle)                                      │
+└────────────────────────────────────────────────────────────┘
+
+$(msg build.micro_step {N} "{description of smallest testable change}")
+
+   Step 1: Write/Update Test
+      └── Run test → Confirm RED (expected failure)
+
+   Step 2: Implement Minimal Code
+      └── Write just enough to make test pass
+
+   Step 3: TCR Decision
+      └── Run test
+          ├── ✅ GREEN → git commit -m "tcr: {micro-step description}"
+          └── ❌ RED   → git checkout -- .  → Retry with new approach
+
+   Step 4: Refactor (optional, while green)
+      └── Run test → ✅ GREEN → Amend or new TCR cycle
+```
+
+**Micro-step guidelines:**
+
+| Change Type | Typical Micro-Steps |
+|-------------|---------------------|
+| Logic / algorithm | 1 function = 1–2 micro-steps |
+| API endpoint | Route → Handler → Validation → Response |
+| UI component | Skeleton → Props → Interaction → Styling |
+| Bug fix | Regression test → Fix → Verify |
+| Refactor | Extract method → Update calls → Remove old |
+
+Accumulate 3–5 micro-commits per Action. Each commit is a guaranteed working state.
+
+#### Architectural Friction Signal (non-blocking)
+
+While implementing, watch for these signals:
+
+- This Action requires touching code in 3+ unrelated modules
+- The existing module boundary has to be bent or bypassed to make this work
+- A data structure or interface needs to change in a way that ripples across contexts
+- The implementation feels "wrong" even when the test passes
+
+When any signal appears, **do not stop — flag it**:
+
+```bash
+# 1. Append to .roll/backlog.md under ## ♻️ Refactor
+# REFACTOR-XXX | <one-line description> | 📋 Todo
+
+# 2. Append a brief entry to .roll/features/autonomous-evolution/refactor-log.md
+```
+
+**REFACTOR entry format in .roll/backlog.md:**
+
+```markdown
+| REFACTOR-001 | {one-line plain-language description} | 📋 Todo |
+```
+
+描述写法：参见 AGENTS.md "Backlog descriptions" 规则。说清楚"什么需要改"以及"不改会怎样"，技术细节写在 `.roll/features/<epic>/refactor-log.md`。
+
+**refactor-log.md entry format:**
+
+```markdown
+## REFACTOR-001 Extract payment boundary
+
+**Flagged**: {YYYY-MM-DD} during US-XXX
+**Signal**: {which friction signal triggered this}
+**Observation**: {1–3 sentences describing what felt wrong}
+**Suggested scope**: {rough sense of what a fix would touch}
+```
+
+Then continue implementing the current Story normally.
+
+**Event emission** — after all TCR micro-steps for a Story complete, emit a `build` event so the cycle event stream reflects the work done:
+
+```bash
+# _tcr_count = number of "tcr:" prefix commits made during this Story
+_loop_event build "$US_ID" "${_tcr_count} commits" "" 2>/dev/null || true
+```
+
+### Phase 5.5: E2E Deposit
+
+After TCR micro-steps pass, deposit an E2E test for this Story's core user flow.
+
+```
+E2E DEPOSIT
+
+   Step 1: Detect
+      └── Read project's existing E2E infrastructure
+          (test directories, config files, framework, naming conventions)
+
+   Step 2: Write
+      └── One E2E test covering the Story's golden path
+          (the critical user journey this Story delivers)
+
+   Step 3: Run
+      └── Execute the new E2E test
+
+   Step 4: TCR
+      ├── ✅ GREEN → git commit -m "tcr: e2e deposit for {story}"
+      └── ❌ RED   → Fix via TCR cycle until green
+```
+
+**Rules:**
+- Follow whatever E2E patterns the project already uses — framework, directory, naming
+- If no E2E infrastructure exists, reference `$roll-.qa` "Missing Test Infrastructure" section to bootstrap minimally, then deposit
+- One test per Story — covers the golden path, not exhaustive edge cases (those are unit/integration from Phase 5)
+- Each deposited E2E becomes a replayable case: CI runs it on every push, Sentinel can sample it against production
+
+### Phase 6: Pre-Push CI Gate
+
+After all micro-steps, run full CI locally before pushing:
+
+```bash
+npm run ci:local 2>/dev/null || (npm run lint && npm run build && npm test -- --run)
+```
+
+**If CI fails:**
+```
+❌ Local CI check failed
+   ├── Run 'npm run ci:fix' or 'npm run format' for auto-fixable issues
+   ├── Fix remaining lint/build/test errors via new TCR cycle
+   └── Re-run until all pass
+```
+
+**Setup `ci:local` script (if not in `package.json`):**
+```json
+{
+  "scripts": {
+    "ci:local": "npm run format:check && npm run lint && npm run build && npm run test -- --run",
+    "ci:fix":   "npm run format && npm run lint -- --fix"
+  }
+}
+```
+
+**Setup pre-push hook (recommended, one-time):**
+```bash
+cat > .git/hooks/pre-push << 'EOF'
+#!/bin/bash
+echo "🔍 Running local CI checks..."
+if ! npm run ci:local 2>/dev/null && ! (npm run lint && npm run build); then
+    echo "❌ CI check failed, push blocked"
+    exit 1
+fi
+echo "✅ CI check passed"
+EOF
+chmod +x .git/hooks/pre-push
+```
+
+### Phase 7: Pre-Push Code Review (Three-Axis Deep Review)
+
+This phase runs **once per Story** (not per micro-step) on the full accumulated diff.
+Per-micro-step review uses `$roll-.review staged` inline checklist (zero extra cost).
+
+**Phase 3.5 vs Phase 7 split**: Phase 3.5 (Peer Review) focuses on architectural direction
+and approach before coding begins. Phase 7 focuses on implementation quality after all
+micro-steps are done — catching issues that only appear at diff scale (parameter sprawl
+across files, copy-paste patterns, cross-file N+1, etc.).
+
+```bash
+# Capture full Story diff
+git diff main...HEAD
+```
+
+**Launch three review agents in parallel** (each receives the full diff):
+
+```
+Agent 1: Reuse Review
+  → Search for existing utilities / helpers the new code could use instead
+  → Flag any new function that duplicates existing functionality
+  → Flag inline logic replaceable by existing tools
+
+Agent 2: Quality Review
+  → Redundant state, Parameter sprawl, Copy-paste near-duplicate,
+     Leaky abstraction, Stringly-typed, JSX nesting,
+     Nested conditionals ≥3 deep, Unnecessary comments
+
+Agent 3: Efficiency Review
+  → Redundant computation / N+1, Missed concurrency,
+     Hot-path bloat, Loop no-op updates, TOCTOU existence pre-check,
+     Memory leaks, Overly broad operations
+```
+
+Wait for all three agents to complete. Aggregate findings → fix each issue
+(false positives: note and skip, no debate) → summarize what was fixed.
+
+**Fallback**: If parallel agent invocation fails, run `$roll-.review staged` on
+the full diff as a single-pass fallback — do not skip review entirely.
+
+**Decision:**
+```
+🔴 Critical > 0 → Fix via new TCR cycle → Re-review
+🟡 Warnings > 0 → Fix if quick (< 5 min) or document
+🟢 Suggestions / ✅ All clear → Proceed to Phase 8
+```
+
+### Phase 8: Commit & Push (branch + PR — NEVER direct to main)
+
+`main` is PR-protected. Push the worktree's branch and open a PR — never
+`git push origin main`. (When invoked by `roll-loop`, the runner already
+created the worktree + branch and opens the PR; this is the manual-path
+equivalent.)
+
+```bash
+# All TCR micro-commits are already made on the worktree's branch (Phase 0).
+git log --oneline -{n}                 # Review TCR commits
+git push -u origin <branch>            # the dispatch/<id> branch from Phase 0
+gh pr create --title "{story-id}: …" --body "…"
+# After CI is green: gh pr merge --rebase
+```
+
+Commit message (if squashing):
+```
+{story-id}: {action description}
+
+- {what changed}
+- {why}
+- {test coverage}
+- TCR: {n} micro-commits
+```
+
+### Phase 9: Watch CI & Deploy
+
+```
+⏳ CI Running...
+   ├── ✅ PASS → Proceed to deploy
+   └── ❌ FAIL →
+       ├── Diagnose failure
+       ├── Create new TCR micro-step to fix
+       └── Push and retry
+```
+
+Follow the repo's deployment path (Vercel / Railway / etc.) and record the deployed target.
+
+**CI failure recovery:**
+```
+1. Diagnose: environment-specific or real failure?
+
+2. If real failure:
+   ├── git reset --soft HEAD~{n}
+   ├── TCR micro-step to fix
+   └── Push again
+
+3. If environment-specific:
+   ├── Document exception
+   └── Get user approval to proceed
+```
+
+### Phase 10: Runtime Verification
+
+- **Web apps**: verify on deployed URL (happy path, edge cases, no regression)
+- **CLI tools**: verify via command execution
+- **Libraries**: verify via test usage or example scripts
+
+### Phase 10.5: Verification Gate (MANDATORY)
+
+**Before marking as DONE, fresh evidence must be provided.**
+
+```
+🚦 $(msg build.verification_gate)
+
+   $(msg build.evidence_checklist):
+   ├── [ ] $(msg build.tests_passed)
+   ├── [ ] $(msg build.build_succeeded)
+   ├── [ ] $(msg build.online_verification)
+   └── [ ] $(msg build.no_regression)
+
+   $(msg build.gate_decision):
+   ├── ✅ $(msg build.gate_pass)
+   └── ❌ $(msg build.gate_fail)
+```
+
+**Hard Rule**: "I confirmed the tests passed" does not count as evidence. Must be **freshly run** command output from this session.
+
+### Phase 10.6: Acceptance Evidence (after Gate PASS)
+
+Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Phase 11.
+
+0. **Before/after pairing (owner ruling 2026-06-06)**: when the story CHANGES
+   existing behavior, capture the prior state (`screenshots/before-*.png`)
+   before building and the new state (`screenshots/after-*.png`) at acceptance —
+   contrast is the clearest evidence. Brand-new capability with no prior state:
+   skip the pair; capture the new surface only.
+
+1. **Dump raw evidence** produced in this session to story-level dirs:
+   `.roll/features/<epic>/{ID}/screenshots/*.png` — the DEFAULT evidence class for
+   every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
+   own report (nothing stops a fabricated `echo "✓ passed" > evidence.txt`); a
+   screenshot is an OS-level capture of really-rendered pixels — an independent
+   channel with a categorically higher forgery cost. Combined with the
+   never-overwritten run dirs (D4) and the render-layer red line, it is the
+   strongest link in the evidence chain.
+   `.roll/features/<epic>/{ID}/evidence/*.txt` (resolve `<epic>` via `.roll/index.json`; `roll attest` writes the report there as `{ID}-report.html`) — supplementary (searchable,
+   copyable); keep raw command outputs here, but do not let a text file be the
+   ONLY evidence for an AC that has a visible surface.
+
+   **CLI capture recipe**: run the verifying command in a REAL terminal (the
+   tmux observation window `roll-loop-<slug>` is a natural target — display the
+   proof there), then `screencapture -x -R <window-rect>` (macOS) into
+   `screenshots/`. Capture ONLY the relevant work area — a focused window, not
+   the whole desktop. Unattended cycles: drive the capture from the dispatcher
+   (deterministic), never hand-craft an image; if the capture channel is
+   unavailable (no GUI session / no permission), fall back to text evidence and
+   mark the AC `partial` with a note — never fake a screenshot.
+2. **Write the intent map** `.roll/features/<epic>/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
+
+```json
+[{ "ac": "{ID}:AC1", "status": "pass",
+   "evidence": [
+     { "kind": "screenshot", "label": "terminal run (real pixels)", "href": "../screenshots/ac1-terminal.png" },
+     { "kind": "text", "label": "vitest (supplementary)", "textFile": "../evidence/vitest.txt" }
+   ] }]
+```
+
+   No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + self-score).
+4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
+   renders, open it and run the checklist below. This is a presentation review of
+   the rendered HTML, NOT an evidence review.
+   **HARD RULE: this checklist NEVER changes any AC's status, evidence, or
+   `pass|readonly|partial|fail|blocked|claimed|missing` verdict.** Those are
+   fixed at step 2 (the ac-map) and enforced by the render-layer red line. If a
+   readability item fails, fix the *presentation* (a missing context field, an
+   uncropped screenshot, a layout overflow) — never edit a verdict to make the
+   report look cleaner.
+   - [ ] **首屏 10s 可懂** — a product/business reviewer grasps what shipped and
+     whether it passed within ten seconds, without scrolling into the technical fold.
+   - [ ] **390 / 320px 无横滚** — no horizontal scroll at mobile widths; before/after
+     pairs stack rather than overflow.
+   - [ ] **打印可读** — print preview (or print-to-PDF) is legible; AC cards don't
+     split awkwardly across pages.
+   - [ ] **状态不只靠颜色** — every status reads from its icon + bilingual word, not
+     color alone (colorblind-safe).
+   - [ ] **截图裁切与清晰度** — screenshots are cropped to the relevant work area and
+     legible; no full-desktop captures, no blurry/half-rendered frames.
+   If you cannot open the report (headless cycle), note that the design QA was
+   deferred and say so in the cycle report — do NOT silently skip it, and do NOT
+   substitute it for an evidence judgement.
+
+### Phase 11: Write Back Status (REQUIRED)
+
+Both locations must be updated — neither can be skipped:
+
+**① Update .roll/backlog.md index row (Status column):**
+
+**Location rule (FIX-198)**: edit the MAIN project's backlog by ABSOLUTE path — `${ROLL_MAIN_PROJECT:-$PWD}/.roll/backlog.md`. In ordinary projects the cycle worktree has NO `.roll/` (gitignored, never checked out): a relative `.roll/backlog.md` edit writes into the void and the flip silently vanishes.
+
+
+```markdown
+| [US-{ID}](.roll/features/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/US-{ID}/latest/US-{ID}-report.html) |
+```
+
+Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state, and the transition is the same Edit operation.
+For Fly mode: first append an index row under the appropriate Epic > Feature group, then mark it done.
+
+**② Update `.roll/features/<epic>/<story>/spec.md`:**
+
+```markdown
+## US-{ID} {Story Title} ✅
+
+**Completed**: {YYYY-MM-DD}
+
+**AC:**
+- [x] {Completed acceptance criterion 1}
+- [x] {Completed acceptance criterion 2}
+
+**Files:**
+- `{added/modified file 1}`
+- `{added/modified file 2}`
+```
+
+- Add ✅ to the heading
+- Add `**Completed**` date
+- Change AC items from `[ ]` to `[x]`
+- Update Files to reflect actual changed files
+
+If the US section does not yet exist, create the full section (AC / Files / Dependencies).
+
+**Before committing, run `$roll-.changelog`** to stage CHANGELOG.md — then include
+it in the completion commit so no separate changelog commit is created.
+
+```bash
+# 1. Stage changelog (roll-.changelog stages CHANGELOG.md only, does not commit)
+$roll-.changelog
+
+# 2. Commit BACKLOG + feature doc + CHANGELOG.md together
+git add .roll/backlog.md .roll/features/ CHANGELOG.md
+git commit -m "docs: mark {US-ID} as completed"
+git push
+```
+
+### Phase 12: Report & Celebrate
+
+```
+✅ $(msg build.pushed_to)
+🚀 $(msg build.deployed): <url>
+✅ $(msg build.verified): <what was checked>
+📦 $(msg build.changes_summary): <summary>
+🔢 $(msg build.commits_count): <count> micro-commits via TCR
+🧪 $(msg build.tests_added): <what tests were added/modified>
+📊 $(msg build.tcr_stats): <success rate, revert count if any>
+📋 $(msg build.review_gate): <self-review findings summary>
+📝 $(msg build.backlog_updated "<US-ID>")
+📄 $(msg build.changelog_bundled)
+
+🎉 $(msg build.shipped)
+
+🔄 $(msg build.next_options):
+1. Continue to next Action (if Story has more)
+2. Start next US (if Fly mode created multiple)
+3. Done (if all completed)
+```
+
+---
+
+## Project Context Rule
+
+Before creating any file or directory:
+
+1. **Read existing project structure** — check for `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, existing `src/`, `api/`, `cmd/` directories
+2. **Infer conventions from evidence** — don't assume a project type; observe what already exists
+3. **Follow what already exists** — introduce new patterns only when the current structure has no precedent
+
+> `roll init` no longer asks for project type. Skills are responsible for reading context and acting accordingly.
+
+---
+
+## Hard Rules
+
+0. **Worktree-first, PR-at-end (ALWAYS)**
+   Before writing any code, work in a dedicated git worktree on its own
+   branch (`git worktree add ../wt-<id> -b <branch>`), never in the shared
+   checkout — so concurrent cycles / sessions never collide. Finish by
+   pushing the branch and opening a PR; `main` is PR-protected — NEVER
+   `git push origin main`. (Under `roll-loop` the runner creates the
+   worktree + branch and opens the PR; this rule is the manual-path
+   equivalent and must hold either way.)
+
+1. **No local-only "done"**
+   Work is not complete until it reaches:
+   commit → push → CI signal → deploy → online verification → backlog update
+
+2. **TCR for every micro-step**
+   - Each behavior change: Test → Green=Commit / Red=Revert
+   - No "I'll fix it in the next step" — revert and retry
+   - Each commit is a guaranteed working state
+
+3. **Test Design Review before implementation**
+   - Design test scenarios and edge cases first
+   - TCR only works if tests are correct — validate early
+
+4. **Micro-steps only**
+   - If a step feels "a bit complex", split it
+   - Each micro-step completable in 1–3 minutes
+   - **No placeholders**: Action/AC descriptions must be specific — no "TBD"
+
+5. **Pre-push self-review required**
+   - Run `$roll-.review staged` on final diff
+   - Fix blocking (Critical) issues via new TCR cycle
+
+6. **No hidden work**
+   - Every file changed must relate to the current Action
+   - No "while I'm here" refactors unless in a separate TCR cycle
+
+7. **Always update BACKLOG status**
+   - .roll/backlog.md index row and `.roll/features/<feature>.md` US section are both required
+   - Neither can be skipped
+
+---
+
+## Definition of Done (per Action)
+
+- [ ] Story and Action clearly defined
+- [ ] Test design reviewed and approved
+- [ ] **TCR cycles completed** (all micro-steps via Test && Commit)
+- [ ] **E2E deposited** (golden path test for this Story, committed via TCR)
+- [ ] All commits are green states (no broken commits)
+- [ ] Local CI checks passed (format + lint + build + test)
+- [ ] Self-code-review passed, blocking issues fixed via TCR
+- [ ] Changes pushed to remote
+- [ ] CI is green (or explicit, recorded exception)
+- [ ] Deployed to production
+- [ ] Online verification performed
+- [ ] **Verification Gate passed** (fresh evidence for tests, build, deploy, no regression)
+- [ ] **.roll/backlog.md index status updated** (📋 → ✅, REQUIRED)
+- [ ] **`.roll/features/<feature>.md` US section updated** (Completed date + [x] ACs, REQUIRED)
+- [ ] **CHANGELOG.md staged and bundled** into completion commit via `$roll-.changelog` in Phase 11 (REQUIRED)
+- [ ] **Self-score note written (US-SKILL-010 / 012)** — see "Self-score" subsection below
+- [ ] Summary reported to user
+
+### Self-score (US-SKILL-012)
+
+Before reporting completion to the user, write one self-score note. The
+helper lands the note under `.roll/features/<epic>/<US-id>/notes/<date>-roll-build-<US-id>-<epoch>.md` (the card folder is the note home, US-META-008; resolve <epic> via .roll/index.json)
+with YAML frontmatter so trend analysis (US-SKILL-014) can aggregate later:
+
+```bash
+bash -c 'source "$(command -v roll)"; \
+  _skill_write_self_score roll-build US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"'
+```
+
+Score guidance (integer 1..10):
+- **9..10** — story shipped cleanly: AC fully met, TCR rhythm tight, no
+  re-tries from `verdict: too_big`, peer review concerns addressed inline.
+- **6..8** — shipped with caveats: re-tries on red, edge case left to a
+  follow-up FIX, documentation lagged behind code by one cycle, etc.
+- **1..5** — shipped but at low confidence: AC partially met (note which),
+  TCR rhythm broken (multiple revert iterations), or `regression` verdict.
+
+Verdict values:
+- `good` — story fully delivered; AC met; no concerning signal.
+- `ok` — shipped but with at least one documented trade-off (use rationale).
+- `regression` — story landed but another behaviour broke (rare; open a FIX).
+
+---
+
+## TCR Recovery Patterns
+
+### Pattern 1: Red After Multiple Attempts
+
+```
+If same micro-step fails 3 times:
+   1. Revert to clean state
+   2. Escalate: "This micro-step is actually medium complexity"
+   3. Split into smaller micro-steps
+   4. Retry TCR
+```
+
+### Pattern 2: Refactoring While Green
+
+```
+If refactoring during green state:
+   Option A: Amend last commit (if refactor is tiny)
+   Option B: New TCR cycle (treat as new micro-step)
+```
+
+### Pattern 3: Test Design Was Wrong
+
+```
+If implementation reveals test design flaw:
+   1. Revert current micro-step
+   2. Return to Phase 4 (Test Design Review)
+   3. Update test design
+   4. Resume TCR cycles
+```
+
+### Pattern 4: Complex State vs Simple Reset
+
+```
+When complex state management is error-prone → consider full reset + re-initialization.
+60% less code, zero bugs is better than an elegant but fragile transition.
+```
+
+---
+
+## When to Use What
+
+```
+roll-build   → ship anything (new idea, US-ID, free-text request)
+roll-fix     → fix a specific known bug (FIX-XXX / BUG-XXX)
+roll-design  → plan and design before building (no code output)
+roll-idea    → fast capture a bug or idea into .roll/backlog.md
+roll-.clarify → passive scope clarification for vague build requests
+```
+
+---
+
+## Required Artifacts (per Action)
+
+The agent must explicitly produce (in text) before or during execution:
+
+- **Current User Story**: 1–3 sentences, INVEST-lean
+- **Current Action**: smallest shippable increment
+- **Acceptance criteria**: measurable outcomes for this Action
+- **Write scope**: files/areas expected to change
+- **Test Design**: scenarios, edge cases, test types
+- **Test Design Review**: coverage validation result
+- **TCR Log**: micro-step descriptions and commit count
+- **E2E Deposit**: golden path E2E test file for this Story
+- **Quality Review**: post-TCR code review result
+- **Deployment target**: where it will be verified

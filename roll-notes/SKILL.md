@@ -2,10 +2,14 @@
 name: roll-notes
 license: MIT
 allowed-tools: "Read, Edit, Write, Bash(date:*)"
-description: "Project diary skill. Records development moments — successes, failures, discoveries — appended chronologically to a daily notes file."
+description: "Load when recording a development moment, decision, discovery, success, or failure into Roll chronological project diary."
 ---
-
 # roll-notes
+
+## Gotchas
+
+- Notes are chronological memory, not backlog commitments or release notes.
+- Record concrete observations with date context; avoid turning notes into hidden task lists.
 
 > 项目日记技能。记录开发过程中的成功、失败、感受和任何值得记住的事情。
 > Append-only, timeline-driven, no fixed format.

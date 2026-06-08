@@ -1,0 +1,235 @@
+{
+  "version": 1,
+  "skills": {
+    "roll-.changelog": {
+      "positive": [
+        "build finished, generate CHANGELOG.md from Done backlog stories",
+        "after deploy, sync user-facing changelog with acceptance evidence"
+      ],
+      "negative": [
+        "design new stories for a feature backlog",
+        "fix a failing unit test through TCR"
+      ]
+    },
+    "roll-.clarify": {
+      "positive": [
+        "the fly-mode build request is vague and needs scope questions",
+        "the user asked for a feature but boundaries are underspecified"
+      ],
+      "negative": [
+        "the user supplied a concrete US-XXX story id",
+        "the user only wants intent restated, not scope questions"
+      ]
+    },
+    "roll-.dream": {
+      "positive": [
+        "run the nightly architecture health scan",
+        "look for dead code, doc staleness, and refactor candidates"
+      ],
+      "negative": [
+        "sample production behavior from deployed endpoints",
+        "generate CHANGELOG.md after a release"
+      ]
+    },
+    "roll-.echo": {
+      "positive": [
+        "the user message is contradictory and needs restatement",
+        "confirm a rambling request before any implementation"
+      ],
+      "negative": [
+        "ask detailed feature scope questions for roll-build fly mode",
+        "execute a clearly named US-XXX story"
+      ]
+    },
+    "roll-.qa": {
+      "positive": [
+        "choose the right test pyramid coverage for a story",
+        "decide whether visual, E2E, smoke, or unit tests are required"
+      ],
+      "negative": [
+        "perform code review findings after TCR",
+        "write a product proposal for backlog candidates"
+      ]
+    },
+    "roll-.review": {
+      "positive": [
+        "self-review code before committing a TCR micro-step",
+        "inspect a local diff for bugs, regressions, and security issues"
+      ],
+      "negative": [
+        "review a GitHub pull request from another branch",
+        "ask another agent for peer negotiation"
+      ]
+    },
+    "roll-brief": {
+      "positive": [
+        "prepare an owner-facing digest of completed and in-progress Roll work",
+        "summarize backlog queue, escalations, and release readiness"
+      ],
+      "negative": [
+        "write public release notes for users",
+        "capture a one-line idea into backlog"
+      ]
+    },
+    "roll-build": {
+      "positive": [
+        "execute US-AUTH-001 through TCR and verification",
+        "turn this feature request into clarified design, implementation, tests, and backlog write-back"
+      ],
+      "negative": [
+        "only discuss architecture options and split backlog stories",
+        "fix FIX-123 as a narrow bug repair"
+      ]
+    },
+    "roll-debug": {
+      "positive": [
+        "mount a browser black-box probe on localhost to diagnose a broken page",
+        "collect console, network, DOM, and runtime state before fixing a web bug"
+      ],
+      "negative": [
+        "run a nightly code architecture scan",
+        "review a pull request diff"
+      ]
+    },
+    "roll-deck": {
+      "positive": [
+        "generate an 18-slide bilingual deck.md for this product topic",
+        "create slides from README, backlog, and evidence"
+      ],
+      "negative": [
+        "update project documentation index",
+        "write a daily owner brief"
+      ]
+    },
+    "roll-design": {
+      "positive": [
+        "discuss options and split this feature into INVEST stories",
+        "model the domain and write backlog/spec artifacts without coding"
+      ],
+      "negative": [
+        "execute an existing US-XXX story through TCR",
+        "hotfix a specific BUG-XXX item"
+      ]
+    },
+    "roll-doc": {
+      "positive": [
+        "scan docs and generate docs/INDEX.md",
+        "find undocumented modules and draft missing documentation"
+      ],
+      "negative": [
+        "generate a bilingual presentation deck",
+        "diagnose Roll installation health"
+      ]
+    },
+    "roll-doctor": {
+      "positive": [
+        "diagnose Roll toolchain health and config validity",
+        "check skill files, templates, symlinks, and conventions sync"
+      ],
+      "negative": [
+        "repair a failing feature test",
+        "run production patrol sampling"
+      ]
+    },
+    "roll-fix": {
+      "positive": [
+        "fix FIX-123 through the lightweight TCR flow",
+        "repair this narrow bug with a regression test and backlog write-back"
+      ],
+      "negative": [
+        "design a new feature from vague product input",
+        "execute a broad US-XXX feature story"
+      ]
+    },
+    "roll-idea": {
+      "positive": [
+        "capture this short idea into backlog with an auto id",
+        "classify a one-line bug or idea note quickly"
+      ],
+      "negative": [
+        "turn an idea into full DDD stories",
+        "write owner briefing since last release"
+      ]
+    },
+    "roll-loop": {
+      "positive": [
+        "operate the autonomous backlog executor loop",
+        "scan Todo stories and dispatch US/FIX/REFACTOR work"
+      ],
+      "negative": [
+        "do a one-time nightly architecture scan",
+        "write a human product proposal"
+      ]
+    },
+    "roll-notes": {
+      "positive": [
+        "record this development discovery in today's project diary",
+        "append a success, failure, or decision to Roll notes"
+      ],
+      "negative": [
+        "generate user-facing changelog entries",
+        "create a backlog story from a product idea"
+      ]
+    },
+    "roll-onboard": {
+      "positive": [
+        "onboard this legacy project into Roll with interactive questions",
+        "produce .roll/onboard-plan.yaml for roll init --apply"
+      ],
+      "negative": [
+        "run setup after the project is already onboarded",
+        "audit existing skill routing quality"
+      ]
+    },
+    "roll-peer": {
+      "positive": [
+        "the user explicitly says /peer for this design decision",
+        "ask another agent to negotiate a high-risk ambiguous plan"
+      ],
+      "negative": [
+        "perform local self-review before commit",
+        "review a pull request without cross-agent negotiation"
+      ]
+    },
+    "roll-propose": {
+      "positive": [
+        "generate product proposal drafts from current project context",
+        "write 1-3 candidate user stories into .roll/proposals.md"
+      ],
+      "negative": [
+        "append a confirmed story directly to backlog",
+        "execute a Todo story through TCR"
+      ]
+    },
+    "roll-review-pr": {
+      "positive": [
+        "review this PR diff and emit APPROVE or REQUEST_CHANGES",
+        "inspect pull request changes with file and line grounded findings"
+      ],
+      "negative": [
+        "self-review a local TCR micro-step",
+        "run attacker and defender agents for high-risk logic"
+      ]
+    },
+    "roll-sentinel": {
+      "positive": [
+        "sample production behavior against backlog requirements",
+        "run cost-controlled patrol checks on deployed flows"
+      ],
+      "negative": [
+        "scan code architecture for refactor candidates",
+        "debug a local browser page with console capture"
+      ]
+    },
+    "roll-spar": {
+      "positive": [
+        "use adversarial TDD for auth or payment logic",
+        "spawn attacker tests and defender implementation for complex state logic"
+      ],
+      "negative": [
+        "ask for ordinary peer review of a plan",
+        "perform routine QA coverage selection"
+      ]
+    }
+  }
+}

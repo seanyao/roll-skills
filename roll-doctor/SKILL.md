@@ -2,10 +2,14 @@
 name: roll-doctor
 license: MIT
 allowed-tools: "Read, Bash, Edit"
-description: "Diagnose Roll toolchain health. Checks skill files, YAML frontmatter, symlinks, conventions sync, template integrity, and config validity."
+description: "Load when diagnosing Roll toolchain health, conventions sync, skill file health, templates, symlinks, config validity, or installation integrity."
 ---
-
 # Roll Doctor
+
+## Gotchas
+
+- Doctor diagnoses toolchain and convention health; it should fail loud on broken contracts rather than hiding drift.
+- Skill health checks belong here only as diagnostics; changing skill content still happens in roll-skills.
 
 诊断 Roll 工具链健康状态。快速定位 skill 不工作、convention 不同步、symlink 断裂等问题。
 
@@ -49,6 +53,21 @@ Check:
 - YAML frontmatter has `name:` and `description:`
 - No duplicate `name` values across skills
 - File is readable markdown
+
+When diagnosing a roll-skills checkout, run the first-class skill audit:
+
+```bash
+node scripts/audit-skills.mjs
+node scripts/audit-skills.mjs --json
+node scripts/audit-skills.mjs --strict
+```
+
+Check:
+- Every description starts with `Load when...` and stays at 50 words or fewer
+- Every skill has positive and negative route cases in `route-cases/skills.json`
+- Every skill has Gotchas / Known Failure Modes coverage
+- Hub/spoke integrity has no missing or unreferenced `references/`, `assets/`, or `scripts/` files
+- Oversized hubs either split below 250 lines or carry an explicit reviewed waiver
 
 ### 3. Symlinks
 

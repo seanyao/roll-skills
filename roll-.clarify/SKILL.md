@@ -2,12 +2,14 @@
 hidden: true
 name: roll-.clarify
 license: MIT
-description: |
-  Passive scope-clarification skill. Auto-triggers when roll-build receives vague or under-specified input in Fly mode. Summarizes intent and asks 3–5 targeted questions to establish boundaries before planning or coding.
-  This is a passive skill. Never announce "I'm using roll-.clarify." Just do it naturally: summarize, ask, wait.
+description: "Load when roll-build Fly mode input is vague or underspecified and the agent must ask targeted scope questions before planning or coding."
 ---
-
 # roll-.clarify
+
+## Gotchas
+
+- This is for scope questions before planning; use roll-.echo when the immediate need is only intent restatement.
+- Stop after asking questions; do not silently proceed into design or code while uncertainty remains.
 
 > Understand first, build second.
 
