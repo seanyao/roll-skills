@@ -497,16 +497,19 @@ the full diff as a single-pass fallback — do not skip review entirely.
 🟢 Suggestions / ✅ All clear → Proceed to Phase 8
 ```
 
-### Phase 8: Commit & Push
+### Phase 8: Commit & Push (branch + PR — NEVER direct to main)
+
+`main` is PR-protected. Push the worktree's branch and open a PR — never
+`git push origin main`. (When invoked by `roll-loop`, the runner already
+created the worktree + branch and opens the PR; this is the manual-path
+equivalent.)
 
 ```bash
-# All TCR micro-commits are already made
-# Squash or keep as-is based on repo convention
-
-git log --oneline -{n}  # Review TCR commits
-
-git pull origin main --rebase
-git push origin main
+# All TCR micro-commits are already made on the worktree's branch (Phase 0).
+git log --oneline -{n}                 # Review TCR commits
+git push -u origin <branch>            # the dispatch/<id> branch from Phase 0
+gh pr create --title "{story-id}: …" --body "…"
+# After CI is green: gh pr merge --rebase
 ```
 
 Commit message (if squashing):
@@ -726,6 +729,15 @@ Before creating any file or directory:
 ---
 
 ## Hard Rules
+
+0. **Worktree-first, PR-at-end (ALWAYS)**
+   Before writing any code, work in a dedicated git worktree on its own
+   branch (`git worktree add ../wt-<id> -b <branch>`), never in the shared
+   checkout — so concurrent cycles / sessions never collide. Finish by
+   pushing the branch and opening a PR; `main` is PR-protected — NEVER
+   `git push origin main`. (Under `roll-loop` the runner creates the
+   worktree + branch and opens the PR; this rule is the manual-path
+   equivalent and must hold either way.)
 
 1. **No local-only "done"**
    Work is not complete until it reaches:

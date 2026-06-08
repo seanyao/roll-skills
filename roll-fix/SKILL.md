@@ -48,6 +48,14 @@ Before creating any file or directory:
 
 ## Hard Rules
 
+0. **Worktree-first, PR-at-end (ALWAYS)**
+   Before editing, work in a dedicated git worktree on its own branch
+   (`git worktree add ../wt-<id> -b <branch>`), never the shared checkout —
+   concurrent cycles/sessions must not collide. Finish by pushing the branch
+   and opening a PR; `main` is PR-protected — NEVER `git push origin main`.
+   (Under `roll-loop` the runner handles the worktree + PR; this rule is the
+   manual-path equivalent and holds either way.)
+
 1. **No local-only "done"**
    Even for a minor change, the work is not complete until it reaches:
    - TCR micro-commits (test-guaranteed working states)
@@ -276,14 +284,17 @@ $roll-.review staged
 
 **Note:** `code-reviewer` placeholder replaced with `$roll-.review` for local execution.
 
-### 7. Commit and push
+### 7. Commit and push (branch + PR — NEVER direct to main)
+
+`main` is PR-protected. Push the worktree's branch and open a PR — never
+`git push origin main`. (Under `roll-loop` the runner already made the
+worktree + branch and opens the PR; this is the manual-path equivalent.)
 
 ```bash
-# TCR commits already made during implementation
-# May squash or keep micro-commits based on repo convention
-
-git pull origin main --rebase
-git push origin main
+# TCR commits already made on the worktree's branch (see Hard Rule 0).
+git push -u origin <branch>
+gh pr create --title "{fix|hotfix}: …" --body "…"
+# After CI is green: gh pr merge --rebase
 ```
 
 Commit message:
