@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "skills": {
+    "quoted-skill": {
+      "positive": ["parse a quoted description", "audit scalar YAML frontmatter"],
+      "negative": ["parse block YAML only", "ignore all skill files"]
+    },
+    "block-skill": {
+      "positive": ["parse a block description", "audit multiline YAML frontmatter"],
+      "negative": ["parse quoted YAML only", "skip description checks"]
+    },
+    "minimal-skill": {
+      "positive": ["confirm missing optional sections do not crash", "audit a tiny skill"],
+      "negative": ["validate spoke references", "require gotchas to parse frontmatter"]
+    },
+    "spoke-skill": {
+      "positive": ["validate spoke references", "find auxiliary runbooks"],
+      "negative": ["audit only frontmatter", "ignore references directories"]
+    }
+  }
+}

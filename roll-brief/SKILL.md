@@ -2,16 +2,14 @@
 name: roll-brief
 license: MIT
 allowed-tools: "Read, Glob, Grep, Write, Bash(git:*)"
-description: |
-  Owner-facing briefing generator. Summarizes what the agent has done since
-  the last brief: completed US/FIX/REFACTOR, in-progress items, BACKLOG queue
-  status, escalations requiring human attention, and a release-readiness verdict.
-  Three trigger modes: auto on Feature completion, daily morning schedule,
-  or manual $roll-brief invocation. Distinct from roll-.changelog (user-facing
-  changelog) — this is an internal digest for the product owner.
+description: "Load when the owner asks for an internal Roll briefing summarizing completed work, in-progress items, backlog queue, escalations, and release readiness."
 ---
-
 # Roll Brief
+
+## Gotchas
+
+- Brief is owner-facing internal context, not public changelog copy.
+- Call out escalations and release readiness explicitly; do not flatten them into a generic progress summary.
 
 > Follows the Architecture Constraints, Development Discipline, and Engineering
 > Common Sense defined in the project AGENTS.md.

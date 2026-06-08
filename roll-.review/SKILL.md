@@ -3,10 +3,14 @@ hidden: true
 name: roll-.review
 license: MIT
 allowed-tools: "Read, Bash(git:*)"
-description: Self code review step in the TCR workflow. Runs after each micro-step is completed and before commit, checking code quality, security, and design issues.
+description: "Load when a TCR micro-step needs self code review before commit, focused on bugs, regressions, security, and design issues."
 ---
-
 # WK Self Code Review
+
+## Gotchas
+
+- Review findings lead with bugs and regressions, not style preferences or summaries.
+- This is local self-review; use roll-review-pr for PR diffs and roll-peer for cross-agent negotiation.
 
 **Quality gate for the TCR loop** - Self-review after each micro-step is completed and before commit.
 

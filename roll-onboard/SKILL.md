@@ -1,10 +1,14 @@
 ---
 name: roll-onboard
 license: MIT
-description: Interactive onboarding for legacy projects. Reads existing code, understands the project, asks 9 questions in 3 groups (cognition / scope / privacy), and writes .roll/onboard-plan.yaml as the contract for `roll init --apply` to execute.
+description: "Load when bringing a legacy project into Roll through interactive discovery questions and generation of .roll/onboard-plan.yaml for roll init --apply."
 ---
-
 # Roll Onboard
+
+## Gotchas
+
+- Onboard gathers a contract for roll init --apply; it should not mutate the project before the plan is reviewed.
+- Respect privacy/scope answers from the interactive questions as hard constraints.
 
 > Follows the Architecture Constraints, Development Discipline, and Engineering Common Sense defined in the project AGENTS.md.
 

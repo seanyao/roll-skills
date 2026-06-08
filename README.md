@@ -49,3 +49,17 @@ Skills are prose contracts — edit the markdown, PR to `main`, then bump the
 `skills/` submodule pointer in the main repo. Conventions (bilingual output,
 backlog write-back rules, evidence chain) are defined by the main repo's
 AGENTS.md and enforced there.
+
+## Health & Authoring · 健康检查与编写纪律
+
+Skill descriptions are model-facing routing triggers, not human summaries. New
+or edited skills must keep a compact `Load when...` description, positive and
+negative route cases, Roll-specific gotchas, and progressive disclosure through
+`references/`, `assets/`, or `scripts/` when the hub grows.
+
+```bash
+node scripts/audit-skills.mjs --strict
+node scripts/test-audit-skills.mjs
+```
+
+See [docs/skill-authoring.md](docs/skill-authoring.md) for the full rules.

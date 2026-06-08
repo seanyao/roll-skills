@@ -2,16 +2,14 @@
 name: roll-propose
 license: MIT
 allowed-tools: "Read, Glob, Grep, Write, Bash(git:*)"
-description: |
-  Human-triggered product proposal generator. Reads project context (BACKLOG,
-  recent commits, existing skills) and generates 1–3 structured US drafts from
-  a user-facing perspective. Writes to .roll/proposals.md for human review — never
-  directly to BACKLOG. Distinct from roll-.dream (which surfaces technical debt
-  from execution experience); roll-propose thinks in user scenarios and feature
-  gaps.
+description: "Load when the owner asks for product proposal drafts from project context that should go to .roll/proposals.md, not directly into backlog."
 ---
-
 # roll-propose
+
+## Gotchas
+
+- Proposals go to .roll/proposals.md for review; never write them directly into BACKLOG.
+- Keep product scenarios user-facing rather than turning every code smell into a feature proposal.
 
 > Follows the Architecture Constraints, Development Discipline, and Engineering
 > Common Sense defined in the project AGENTS.md.
