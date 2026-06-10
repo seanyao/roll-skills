@@ -35,6 +35,9 @@ Load when configuring, explaining, or operating Roll autonomous backlog executio
 - Loop never cuts a release autonomously.
 - Fail-loud and PAUSE beat silent fallback.
 
+- NEVER run `git push` or `gh pr create` yourself inside a loop cycle: the RUNNER owns publish — it pushes the branch, opens the PR, and runs the attest/peer gates first. A self-published PR bypasses every gate (FIX-245: the runner adopts it and logs a discipline breach, but the gates have already been jumped). Finish your TCR commits and stop; publishing is not your step.
+  循环内严禁自己 push/开 PR——发布由 runner 负责(先过闸再出门);自开 PR = 跳闸违纪。
+
 ## Gotchas
 
 - Loop dispatches backlog items; it must not merge releases or bypass human-on-the-loop decisions.
