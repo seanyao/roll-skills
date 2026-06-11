@@ -93,6 +93,10 @@ Before creating any file or directory:
    - the change affects roadmap-visible behavior
    - the fix should be tracked for follow-up work
 
+7. **Docs/code/product stay aligned**
+   - User-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery
+   - Registry drift from FIX-242 remains a hard red line; `roll attest` doc-gap is a shadow warning and should be resolved before Done
+
 ## TCR Workflow
 
 ### 0. Pre-flight self-check (US-AGENT-007)
@@ -496,6 +500,7 @@ A minor change is only "done" when all are true:
 - [ ] **TCR cycle(s) completed** (fix via Test && Commit)
 - [ ] All commits are green states
 - [ ] Local integration checks pass
+- [ ] **Docs/code/product aligned** (user-visible changes updated touched README/docs/guide/site/help, or the delivery records why no doc surface changed)
 - [ ] Quality review (code-reviewer) passed, blocking issues resolved via TCR
 - [ ] Changes pushed
 - [ ] CI is green (or explicit, recorded exception exists)

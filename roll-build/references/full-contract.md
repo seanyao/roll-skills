@@ -768,6 +768,10 @@ Before creating any file or directory:
    - .roll/backlog.md index row and `.roll/features/<feature>.md` US section are both required
    - Neither can be skipped
 
+8. **Docs/code/product stay aligned**
+   - User-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery
+   - Registry drift from FIX-242 remains a hard red line; `roll attest` doc-gap is a shadow warning and should be resolved before Done
+
 ---
 
 ## Definition of Done (per Action)
@@ -778,6 +782,7 @@ Before creating any file or directory:
 - [ ] **E2E deposited** (golden path test for this Story, committed via TCR)
 - [ ] All commits are green states (no broken commits)
 - [ ] Local CI checks passed (format + lint + build + test)
+- [ ] **Docs/code/product aligned** (user-visible changes updated touched README/docs/guide/site/help, or the delivery records why no doc surface changed)
 - [ ] Self-code-review passed, blocking issues fixed via TCR
 - [ ] Changes pushed to remote
 - [ ] CI is green (or explicit, recorded exception)
