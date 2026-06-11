@@ -41,14 +41,14 @@ Hard constraint: **AI cannot create files in the user's project other than `.rol
 1. The repository tree (use the project's own structure to infer technologies)
 2. Any existing `README.md` / `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` etc. as evidence
 3. `roll-doc --dry-run` output → identifies what documentation gaps exist
-4. The path-audit pattern: scan for legacy structure markers (`BACKLOG.md`, `docs/features/`, etc.) — if any are present, REFUSE and tell the user to run `roll migrate` first
+4. The path-audit pattern: scan for legacy structure markers (`BACKLOG.md`, `docs/features/`, etc.) — if any are present, REFUSE and tell the user to run `npx @seanyao/roll@2 migrate` first
 
 ## Workflow
 
 ### Step 0 — Pre-flight
 
 1. Check that you're in a legacy project root (no `AGENTS.md`, has source code)
-2. If `BACKLOG.md` or `docs/features/` already present → STOP, tell user to run `roll migrate` first (this is a partial-migration project, not legacy)
+2. If `BACKLOG.md` or `docs/features/` already present → STOP, tell user to run `npx @seanyao/roll@2 migrate` first (this is a partial-migration project, not legacy)
 3. Check `.roll/onboard-plan.yaml` doesn't already exist; if it does, ask user whether to overwrite
 
 ### Step 1 — Read code, build understanding
@@ -228,7 +228,7 @@ Do NOT run `roll init --apply` yourself. Do NOT modify other project files. Your
 ## When NOT to use
 
 - **Not a legacy project**: empty dir or fresh project → use plain `roll init` instead
-- **Has BACKLOG.md or docs/features/**: this is a pre-2.0 Roll project → run `roll migrate` first
+- **Has BACKLOG.md or docs/features/**: this is a pre-2.0 Roll project → run `npx @seanyao/roll@2 migrate` first
 - **Has .roll/ already**: already onboarded → don't re-run
 
 ## Failure modes
