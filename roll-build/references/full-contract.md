@@ -797,14 +797,18 @@ Before creating any file or directory:
 
 ### Self-score (US-SKILL-012)
 
-Before reporting completion to the user, write one self-score note. The
-helper lands the note under `.roll/features/<epic>/<US-id>/notes/<date>-roll-build-<US-id>-<epoch>.md` (the card folder is the note home, US-META-008; resolve <epic> via .roll/index.json)
+Before reporting completion to the user, write one self-score note. Run from
+the main project root (the directory holding `.roll/`); the command validates
+inputs and lands the note under `.roll/features/<epic>/<US-id>/notes/<date>-roll-build-<US-id>-<epoch>.md` (the card folder is the note home, US-META-008; epic resolution and the `.roll/notes/` fallback are built in)
 with YAML frontmatter so trend analysis (US-SKILL-014) can aggregate later:
 
 ```bash
-bash -c 'source "$(command -v roll)"; \
-  _skill_write_self_score roll-build US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"'
+roll self-score roll-build US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"
 ```
+
+> FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a
+> bash library — the old `source`-based `_skill_write_self_score`
+> path is dead. Retrying after a transient failure is safe (idempotent).
 
 Score guidance (integer 1..10):
 - **9..10** — story shipped cleanly: AC fully met, TCR rhythm tight, no

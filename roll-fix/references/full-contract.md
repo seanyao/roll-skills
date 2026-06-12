@@ -508,19 +508,23 @@ A minor change is only "done" when all are true:
 - [ ] Online verification performed
 - [ ] **Verification Gate passed** (fresh evidence for tests, build, fix confirmation, no regression)
 - [ ] **Self-score note written (US-SKILL-010 / 011)** — before exit, the agent
-      writes a structured score note via `_skill_write_self_score` so trend
+      writes a structured score note via `roll self-score` so trend
       analysis (US-SKILL-014) and skill-self-scoring docs (US-SKILL-015) have
       data to read.
 
 ### Self-score (US-SKILL-011)
 
-Before exiting the cycle, write one self-score note. The helper validates
-inputs and lands the note under `.roll/features/<epic>/<FIX-id>/notes/<date>-roll-fix-<FIX-id>-<epoch>.md` (the card folder is the note home, US-META-008; resolve <epic> via .roll/index.json):
+Before exiting the cycle, write one self-score note. Run from the main
+project root (the directory holding `.roll/`); the command validates inputs
+and lands the note under `.roll/features/<epic>/<FIX-id>/notes/<date>-roll-fix-<FIX-id>-<epoch>.md` (the card folder is the note home, US-META-008; epic resolution and the `.roll/notes/` fallback are built in):
 
 ```bash
-bash -c 'source "$(command -v roll)"; \
-  _skill_write_self_score roll-fix FIX-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"'
+roll self-score roll-fix FIX-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"
 ```
+
+> FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a
+> bash library — the old `source`-based `_skill_write_self_score`
+> path is dead. Retrying after a transient failure is safe (idempotent).
 
 Score guidance (integer 1..10):
 - **9..10** — clean root-cause fix; regression test added; TCR cycle smooth.

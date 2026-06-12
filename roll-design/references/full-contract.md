@@ -793,13 +793,17 @@ landed and the user has either confirmed or chosen `No` (story still
 queued) — write a single self-score note covering the design session:
 
 ```bash
-bash -c 'source "$(command -v roll)"; \
-  _skill_write_self_score roll-design US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"'
+roll self-score roll-design US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"
 ```
 
+> FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a
+> bash library — the old `source`-based `_skill_write_self_score`
+> path is dead. Retrying after a transient failure is safe (idempotent).
+
 Use the **first** US-id of the batch as the story handle (or the
-representative story when splitting). The note lands under
-`.roll/notes/<date>-roll-design-<id>-<epoch>.md` so US-SKILL-014 can
+representative story when splitting). Run from the main project root; when the
+story already has a card folder the note lands there, otherwise it falls back
+to `.roll/notes/<date>-roll-design-<id>-<epoch>.md` so US-SKILL-014 can
 read trend data.
 
 Score guidance for design quality (integer 1..10):

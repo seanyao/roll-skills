@@ -42,6 +42,10 @@ Every hub must include `## Gotchas` or `## Known Failure Modes`.
 - If a gotcha comes from a missed load, add a positive route case.
 - If a gotcha comes from an off-target load, add a negative route case.
 - Treat the section as append-mostly unless an entry is proven obsolete.
+- Never instruct agents to `source "$(command -v roll)"`: the TS-native `roll`
+  is a bundled CLI, not a bash library, and sourcing it executes JS as shell
+  (FIX-274). Skill steps call `roll <command>` directly — e.g. self-score notes
+  go through `roll self-score <skill> <story> <score> <verdict> "<rationale>"`.
 
 ## Maintenance Workflow
 
