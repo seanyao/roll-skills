@@ -793,7 +793,12 @@ landed and the user has either confirmed or chosen `No` (story still
 queued) — write a single self-score note covering the design session:
 
 ```bash
-roll self-score roll-design US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"
+# 1. pair-first (US-PAIR-009/010): when .roll/pairing.yaml enables the `score`
+#    stage, the paired heterogeneous agent scores the design session
+roll pair score US-XXX-NNN --summary "<one-paragraph design-session summary>"
+# 2. ONLY when the command prints a fallback hint (pairing off / no candidate /
+#    timeout), write the self-score with the printed reason:
+roll self-score roll-design US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>" --fallback-reason "<reason>"
 ```
 
 > FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a

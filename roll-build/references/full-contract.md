@@ -797,14 +797,22 @@ Before creating any file or directory:
 
 ### Self-score (US-SKILL-012)
 
-Before reporting completion to the user, write one self-score note. Run from
-the main project root (the directory holding `.roll/`); the command validates
-inputs and lands the note under `.roll/features/<epic>/<US-id>/notes/<date>-roll-build-<US-id>-<epoch>.md` (the card folder is the note home, US-META-008; epic resolution and the `.roll/notes/` fallback are built in)
+Before reporting completion to the user, ensure one score note lands.
+**Pair-first (US-PAIR-009/010): when `.roll/pairing.yaml` enables the `score`
+stage, the paired heterogeneous agent produces the score — self-score is the
+fallback, not the default.** Run from the main project root (the directory
+holding `.roll/`); the note lands under `.roll/features/<epic>/<US-id>/notes/<date>-roll-build-<US-id>-<epoch>.md` (the card folder is the note home, US-META-008; epic resolution and the `.roll/notes/` fallback are built in)
 with YAML frontmatter so trend analysis (US-SKILL-014) can aggregate later:
 
 ```bash
-roll self-score roll-build US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>"
+# 1. pair-first: ask the paired heterogeneous agent to score the cycle
+roll pair score US-XXX-NNN --summary "<one-paragraph delivery summary>"
+# 2. ONLY when the command prints a fallback hint (pairing off / no candidate /
+#    timeout), write the self-score with the printed reason:
+roll self-score roll-build US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>" --fallback-reason "<reason>"
 ```
+
+Both commands are idempotent — retrying after a transient failure is safe.
 
 > FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a
 > bash library — the old `source`-based `_skill_write_self_score`
