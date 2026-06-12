@@ -795,7 +795,7 @@ queued) — write a single self-score note covering the design session:
 ```bash
 # 1. pair-first (US-PAIR-009/010): when .roll/pairing.yaml enables the `score`
 #    stage, the paired heterogeneous agent scores the design session
-roll pair score US-XXX-NNN --summary "<one-paragraph design-session summary>"
+roll pair score US-XXX-NNN --skill roll-design --summary "<one-paragraph design-session summary>"
 # 2. ONLY when the command prints a fallback hint (pairing off / no candidate /
 #    timeout), write the self-score with the printed reason:
 roll self-score roll-design US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>" --fallback-reason "<reason>"
