@@ -176,7 +176,7 @@ Expected AC:
 Input: IDEA-NNN identifier from .roll/backlog.md
 
 Execution path:
-  [Read .roll/backlog.md IDEA-NNN row] → [Analyze] → [DDD Slice] → [Split Stories]
+  [Read .roll/backlog.md IDEA-NNN row] → [Analyze] → [DDD Slice] → [Solution Design] → [Split Stories]
       → [Write BACKLOG 📋 Todo] → [Annotate IDEA row: → US-XXX] → Done
 
 IDEA annotation: append `→ US-XXX` to the IDEA row's Description column.
@@ -289,10 +289,22 @@ User Input
                                          │
                                          ▼
               ┌─────────────────────────────────────────┐
-              │ 3. Solution Design                       │
-              │    - Architecture design                 │
-              │    - Module decomposition                │
+              │ 3. Detailed (Solution) Design  ★MANDATORY│
+              │    Before ANY decomposition, for         │
+              │    non-trivial work produce a concrete,  │
+              │    implementable artifact (depth scales  │
+              │    with risk/novelty):                   │
+              │    - Architecture / module decomposition │
               │    - Dependency analysis                 │
+              │    Required artifacts (all of):          │
+              │      (a) data/contract schema            │
+              │      (b) ≥1 COMPLETE worked sample of    │
+              │          the intended output/behavior    │
+              │      (c) key interface signatures        │
+              │      (d) mapping/normalization rules     │
+              │      (e) edge cases & failure modes      │
+              │    Rule: if you cannot show a complete   │
+              │    worked sample, the design is NOT done.│
               │    [Greenfield] Tactical Model per Context:
               │      - Aggregate Root + Entities + VOs  │
               │      - Invariants (业务不变式)           │
@@ -310,6 +322,15 @@ User Input
               │    Skill("roll-peer", tag="architecture")│
               └──────────────────┬──────────────────────┘
                                  │ AGREE / skipped
+                                 ▼
+              ┌─────────────────────────────────────────┐
+              │ [gate] Owner Sign-off on Detailed Design │  ← REQUIRED before decomposition
+              │    Decomposition slices an AGREED design;│
+              │    it does NOT replace designing. Get    │
+              │    owner sign-off (proportional to risk) │
+              │    before splitting into stories.        │
+              └──────────────────┬──────────────────────┘
+                                 │ Signed off
                                  ▼
               ┌─────────────────────────────────────────┐
               │ 4. Split into Stories                    │
