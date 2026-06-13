@@ -200,12 +200,28 @@ it('should handle concurrent writes', async () => {
 
 ---
 
+## 9. Detailed Design Completeness 📐
+
+**Definition:** Before decomposing work into stories, the detailed design must be concrete and implementable — not a sketch.
+
+**Must include (proportional to risk/novelty):**
+- [ ] Data/contract **schema**
+- [ ] **At least one complete worked sample** of the intended output/behavior
+- [ ] Key **interface signatures**
+- [ ] **Mapping/normalization rules**
+- [ ] **Edge cases & failure modes**
+
+**Rule:** If you cannot show at least one complete worked sample, the design is NOT done. Decomposition slices an agreed design — it is not a substitute for designing.
+
+---
+
 ## Mandatory Check Process
 
 During the **Test Design Review** phase of each Story, the following must be answered:
 
 ```markdown
 ### Engineering Common Sense Checklist
+- [ ] **Detailed design completeness**: Does the detailed design include at least one complete worked sample plus schema, interface signatures, mapping rules, and edge cases?
 - [ ] **Idempotency**: Can it be run repeatedly? Are there tests?
 - [ ] **Cross-module contract**: Are IDs/formats/algorithms consistent?
 - [ ] **Data flow**: Is the producer → consumer pipeline complete?
