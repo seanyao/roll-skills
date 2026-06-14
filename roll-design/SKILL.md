@@ -38,12 +38,14 @@ Load when the user wants to discuss approaches, design a solution, model domains
 - Backlog rows and spec files must stay consistent.
 - Peer review gates apply only when explicitly available/requested.
 - No story decomposition until a detailed design exists and the owner has signed off (proportional to risk). Decomposition slices an agreed design — it is NOT a substitute for designing. If you cannot show at least one complete worked sample of the intended output/behavior, the design is NOT done.
+- **[GATE] Visual-evidence AC is mandatory for every story**: every story spec MUST contain at least one AC capturing a screenshot / visual evidence of its user-visible surface (web page, CLI output, TUI, rendered artifact, …). A story spec without this AC — and without an explicit recorded exemption — is INCOMPLETE and must not be committed to the backlog. Only a genuinely non-visual story may be exempted, and only with the exemption reason written inline in the spec.
 
 ## Gotchas
 
 - Design writes backlog/spec artifacts; it must not quietly start code implementation.
 - Use roll story new for story directories; do not hand-create backlog rows without matching dossier structure.
 - Jumping from idea straight to INVEST stories (skipping detailed design) produces shallow specs and improvised, inconsistent implementation. Decomposition must slice a concrete, owner-agreed detailed design — schema + at least one complete worked sample + interfaces + mapping rules + edge cases.
+- **Missing screenshot AC = design flaw**: omitting the visual-evidence AC at design time (even for CLI/TUI/agent stories) is a design defect — not a build-time detail to add later. "能截则截、应截尽截" — capture whenever possible. This gate applies regardless of story type or agent/vendor.
 
 ## Maintenance
 
