@@ -20,6 +20,10 @@ Discuss approaches, design architecture, plan requirements, and write to `.roll/
 > **Doc-refresh discipline**: When splitting stories that change user-visible behavior, always append a closing "doc-refresh" story.
 > **文档刷新纪律**：拆出的 story 只要改变了用户可见行为，最后必须追加一张"文档刷新"收尾 story。
 > See [Doc Update Discipline](#doc-update-discipline) at the bottom of this file for the full rule.
+>
+> **Visual-evidence AC discipline (FIX-311)**: Every story's AC MUST include a `[visual-evidence]` screenshot criterion capturing its user-visible surface. Only genuinely non-visual stories may be exempted — and only with an explicit recorded reason. A story lacking this AC (and lacking a recorded exemption) is INCOMPLETE.
+> **可视证据AC纪律**：每个 story 的 AC 必须含截图/可视证据条目，捕获其用户可见面。无可视面者须显式记录豁免理由，否则 spec 为 INCOMPLETE。
+> See [Visual-Evidence AC Discipline](#visual-evidence-ac-discipline) at the bottom of this file for the full rule.
 
 ## Use This Skill For
 
@@ -337,11 +341,18 @@ User Input
               │    - INVEST principles                   │
               │    - Bounded Context → US domain prefix  │
               │    - Priority ordering                   │
-              │    - **强制检查**: 若本批次任一 US 改了    │
+              │    - **强制检查 1**: 若本批次任一 US 改了  │
               │      用户可见行为（CLI 输出 / 命令参数 /  │
               │      状态语义 / 错误提示），必须在末尾追加 │
               │      一张 doc-refresh 收尾 story         │
               │      （详见 Doc Update Discipline 一节）│
+              │    - **[GATE] 强制检查 2 — 可视证据 AC**: │
+              │      每个 story 的 AC 必须含≥1条截图/可视 │
+              │      证据条目，捕获其用户可见面（web页面/ │
+              │      CLI输出/TUI/渲染产物等）。无可视面的 │
+              │      story 须在 spec 内显式记录豁免原因。 │
+              │      无截图AC且无豁免记录 = INCOMPLETE。  │
+              │      （详见 Visual-Evidence AC Discipline）│
               └──────────────────┬──────────────────────┘
                                  │
                                  ▼
@@ -719,6 +730,7 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 - [ ] {measurable criteria 1}
 - [ ] {measurable criteria 2}
 - [ ] {measurable criteria 3}
+- [ ] **[visual-evidence]** Screenshot / screen recording of {the user-visible surface: web page at `<url>`, CLI output of `<command>`, TUI view, …} captured and attached as acceptance evidence. *(If this story has no user-visible surface, record exemption reason here instead of this line.)*
 
 **Files:**
 - `{file1}`
@@ -835,13 +847,16 @@ read trend data.
 Score guidance for design quality (integer 1..10):
 - **9..10** — clean split: every US is INVEST-compliant, profile
   (est_min / risk_zone / chain_depth) filled, doc-refresh closer wired
-  when user-visible behaviour changed, peer-review unnecessary or
+  when user-visible behaviour changed, every story has a visual-evidence
+  AC (or an explicit recorded exemption), peer-review unnecessary or
   reached AGREE quickly.
 - **6..8** — split shipped but with caveats: one US borderline on
   INVEST (e.g. shared file conflict), or Discuss had ESCALATE before
-  settling, or profile was partial.
+  settling, or profile was partial, or one story is missing its
+  screenshot AC but has a plausible exemption reason noted.
 - **1..5** — split shipped but rough: missing doc-refresh closer,
-  profile fields skipped, USer story too coarse for AI cycle; flag a
+  profile fields skipped, story too coarse for AI cycle, or one or more
+  stories lack a visual-evidence AC with no recorded exemption; flag a
   follow-up `roll-design` pass.
 
 Verdict values:
@@ -907,6 +922,49 @@ Before creating any file or directory:
 4. **Follow what already exists** — introduce new patterns only when the current structure has no precedent
 
 > `roll init` no longer asks for project type. Skills are responsible for reading context and acting accordingly.
+
+---
+
+<a id="visual-evidence-ac-discipline"></a>
+## Visual-Evidence AC Discipline
+
+**Owner principle — "能截则截、应截尽截"**: A screenshot / visual evidence AC is the BASELINE requirement for EVERY story, regardless of story type (Web / CLI / TUI / agent / infra / doc). It must be baked into the story's Acceptance Criteria AT DESIGN TIME. Omitting it at design time is a design defect — not something to add later during build. This gate is agent-agnostic and vendor-agnostic.
+
+### Mandatory AC wording (add to every story)
+
+```markdown
+- [ ] **[visual-evidence]** Screenshot / screen recording of {the user-visible surface:
+      web page at `<url>`, CLI output of `<command>`, TUI view, rendered artifact, …}
+      captured and attached as acceptance evidence.
+```
+
+Fill in the `{}` placeholder with the concrete surface name. Examples:
+
+| Story type | Example visual-evidence AC |
+|------------|---------------------------|
+| Web UI | `Screenshot of the /dashboard page showing the new widget` |
+| CLI command | `Terminal capture of `roll status` output with the new column` |
+| TUI | `Screen recording of the interactive prompt showing correct rendering` |
+| File/artifact | `Screenshot of the generated PDF / HTML preview opened in browser` |
+| API (no UI) | `Screenshot of curl / Postman showing 200 response with expected body` |
+
+### Exemption rule (use sparingly)
+
+A story MAY omit the screenshot AC only when it has **no user-visible surface whatsoever** (e.g., a pure internal refactor with zero observable output change). In that case, replace the `[visual-evidence]` line with an explicit inline exemption:
+
+```markdown
+- [ ] **[visual-evidence — EXEMPT]** Reason: {e.g., pure internal rename — no CLI/UI output changes; verified by unit tests only}
+```
+
+A recorded exemption is **required** — silence is not exemption. A story spec with neither a screenshot AC nor a recorded exemption is INCOMPLETE and must not be committed to the backlog.
+
+### Design-time checklist (run at Step 4 — Split into Stories)
+
+For every story in the batch, confirm at least one of:
+- [ ] `[visual-evidence]` AC present with the concrete surface named, OR
+- [ ] `[visual-evidence — EXEMPT]` line present with a written reason
+
+If neither is present → the story spec is INCOMPLETE → fix before writing to backlog.
 
 ---
 
