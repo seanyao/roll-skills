@@ -314,13 +314,29 @@ $(msg build.micro_step {N} "{description of smallest testable change}")
       └── Write just enough to make test pass
 
    Step 3: TCR Decision
-      └── Run test
+      └── roll test  (per-commit gate — AFFECTED scope only)
           ├── ✅ GREEN → git commit -m "tcr: {micro-step description}"
           └── ❌ RED   → git checkout -- .  → Retry with new approach
 
    Step 4: Refactor (optional, while green)
-      └── Run test → ✅ GREEN → Amend or new TCR cycle
+      └── roll test → ✅ GREEN → Amend or new TCR cycle
 ```
+
+**The commit gate runs AFFECTED tests, not the full suite (FIX-325):**
+
+- `roll test` (the per-commit gate) runs `vitest --changed` — only the
+  dependency closure of the working-tree change — and **excludes** the
+  env-divergent heavy suites (`*.integration.test.ts`, `*.e2e.test.ts`,
+  `npm-pack.test.ts`) that are red locally / in a cycle worktree but green in
+  CI. The FULL suite (`npm test`, no `--affected`) is the CI / pre-push gate
+  (Phase 5), never the per-commit gate.
+- On green, `roll test` writes the proof record `.roll/last-test-pass`
+  (`{ts, tree, mode, scope}`). The `pre-commit` hook refuses the commit unless
+  that proof is **fresh (≤ 60s)** AND its `tree` matches the current
+  `git write-tree` — i.e. the exact code being committed was just tested. So:
+  stage → `roll test` → commit, in that order; editing after the test
+  invalidates the proof (commit blocked: "code changed since last test run").
+  Doc-only changes are exempt.
 
 **Micro-step guidelines:**
 
@@ -411,7 +427,10 @@ E2E DEPOSIT
 
 ### Phase 5: Pre-Push CI Gate
 
-After all micro-steps, run full CI locally before pushing:
+After all micro-steps, run the **FULL** suite locally before pushing — this is
+where the heavy env-divergent suites (integration / e2e / npm-pack) excluded
+from the per-commit affected gate (Phase 3) finally run. This is the same scope
+CI runs (`npm test` with no `--affected`), so a green here predicts a green CI.
 
 ```bash
 npm run ci:local 2>/dev/null || (npm run lint && npm run build && npm test -- --run)
@@ -578,6 +597,15 @@ Follow the repo's deployment path (Vercel / Railway / etc.) and record the deplo
 
 Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). Non-blocking: any failure here → WARN, continue to Phase 12.
 
+**Attest is EARNED during delivery — never backfilled (FIX-329).** Acceptance
+evidence is produced inside the delivery: under `roll-loop` the HARD
+`attest:gate` renders the report in-cycle; on the manual path you run
+`roll attest` here, in Phase 10.6 of this delivery. There is no after-the-fact
+reconstruction — `roll attest backfill` was a loophole and has been **removed**
+(it now hard-errors). A Done card with no in-delivery evidence cannot acquire a
+report; the only way past the release consistency gate is to **re-deliver** the
+story (loop or manual Phase 10.6) and earn the report at delivery time.
+
 0. **Before/after pairing (owner ruling 2026-06-06)**: when the story CHANGES
    existing behavior, capture the prior state (`screenshots/before-*.png`)
    before building and the new state (`screenshots/after-*.png`) at acceptance —
@@ -604,6 +632,20 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    (deterministic), never hand-craft an image; if the capture channel is
    unavailable (no GUI session / no permission), fall back to text evidence and
    mark the AC `partial` with a note — never fake a screenshot.
+
+   **Web capture — shoot the DELIVERABLE, not the dossier (FIX-321/314)**: a web
+   screenshot captures the card's **declared** deliverable, taken from the
+   story's frontmatter key `deliverable_url` (alias `screenshot_url`). It may be
+   a URL, a local file, or carry a `#fragment` to deep-link a specific tab/view
+   (e.g. `.roll/features/index.html#casting`). The loop captures it with
+   **headless Playwright** — no GUI browser window pops up, and a missing
+   Chromium self-heals via an auto-install on first use. The red line: **never**
+   screenshot roll's own attest report / dossier page and pass it off as the
+   deliverable — that is a hollow shot. If the card declares **no**
+   `deliverable_url`, the capture **honestly skips** (recorded as a real skip,
+   not a fabricated image) — that is the correct behavior, not a failure. Declare
+   `deliverable_url` in the spec frontmatter when the story ships a visible web
+   surface so the real view gets captured.
 2. **Write the intent map** `.roll/features/<epic>/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
 
 ```json
@@ -640,6 +682,20 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    substitute it for an evidence judgement.
 
 ### Phase 12: Write Back Status (REQUIRED)
+
+**Done ≡ merged (FIX-322/323).** A card is `✅ Done` only once its delivery is
+**merged to `main`** — not when the branch is pushed and not while the PR is
+merely open. `published_pending_merge` (pushed / PR open, awaiting merge) is
+**not** delivered. Consequences you can rely on:
+
+- The picker **skips** any card that already has a merged delivery, so a card
+  reset to 📋 Todo after merge is not re-picked and re-built.
+- Preflight reconciles truth from the PR: a 🔨 In Progress card whose PR has
+  **MERGED** is flipped to ✅ Done automatically (an OPEN PR is left alone).
+
+So on the manual path, flip the row to Done **after** the PR merges; under
+`roll-loop` the runner waits for green CI, auto-merges, and the flip follows the
+merge — do not pre-flip on a still-open PR.
 
 Both locations must be updated — neither can be skipped:
 
@@ -738,9 +794,14 @@ Before creating any file or directory:
    worktree + branch and opens the PR; this rule is the manual-path
    equivalent and must hold either way.)
 
-1. **No local-only "done"**
+1. **No local-only "done" — Done ≡ merged (FIX-322/323)**
    Work is not complete until it reaches:
-   commit → push → CI signal → deploy → online verification → backlog update
+   commit → push → CI signal → **PR merged to main** → deploy → online
+   verification → backlog update.
+   A pushed branch or an open PR is `published_pending_merge`, NOT delivered;
+   the row flips to `✅ Done` only after the merge. Truth reconciles from the
+   PR: the picker skips already-merged cards and preflight flips a MERGED PR's
+   card to Done.
 
 2. **TCR for every micro-step**
    - Each behavior change: Test → Green=Commit / Red=Revert
