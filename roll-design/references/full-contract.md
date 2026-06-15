@@ -719,6 +719,21 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 - [ ] {measurable criteria 1}
 - [ ] {measurable criteria 2}
 - [ ] {measurable criteria 3}
+- [ ] {visual-evidence AC — REQUIRED by default: a captured screenshot of this story's user-visible surface (web/CLI/TUI). For a web/visual card this is "screenshot of <the deliverable page> is captured", paired with the `deliverable_url:` frontmatter below. Omit this AC ONLY when the card is `screenshot_exempt:` (see frontmatter).}
+
+**Spec frontmatter (visual-evidence contract — FIX-311):**
+- A web/visual card MUST declare the real product surface it delivers:
+  ```yaml
+  ---
+  deliverable_url: .roll/features/index.html#casting   # alias: screenshot_url. The actual deliverable page, NEVER the card's own dossier/report page.
+  ---
+  ```
+- A card with genuinely NO user-visible surface (pure data-migration, infra, …) instead records:
+  ```yaml
+  ---
+  screenshot_exempt: pure data-migration — no user-visible surface   # a naked `true`/`yes` is NOT valid; the reason is mandatory.
+  ---
+  ```
 
 **Files:**
 - `{file1}`

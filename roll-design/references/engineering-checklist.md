@@ -2,6 +2,32 @@
 
 > **These are not best practices — they are baseline requirements.** Violations are bugs.
 
+## 0. Visual Evidence Contract (FIX-311) 📸
+
+**Definition:** A spec must be born honest — its design already names HOW the
+delivery will prove its user-visible surface. A missing screenshot is a DESIGN
+defect, not a delivery omission.
+
+**Must verify (default = REQUIRED; exemption is the only opt-out):**
+- [ ] Every story carries one AC that captures its user-visible surface (web/CLI/TUI screenshot / 截图).
+- [ ] A web/visual card declares the real product surface in frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `.roll/features/index.html#casting`), NEVER the card's own dossier/report page.
+- [ ] A card with genuinely no visual surface records `screenshot_exempt: <reason>` (a naked `true`/`yes` is invalid — the reason is mandatory).
+
+**Enforced, not advisory:** `validateStoryVisualEvidence(specText)` in
+`packages/cli/src/lib/design-visual-evidence.ts` returns `ok:false` for a
+non-exempt spec missing a visual-evidence AC, or one that declares a visual
+surface but no `deliverable_url`. Keyword matching may only RECOGNISE an
+exemption / an existing visual-evidence AC — never decide a card needs a
+screenshot (it always does, by default). Same contract the runtime enforce gate
+(FIX-309) and archive gate (FIX-334) hold; the three must agree.
+
+**Counter-example (FIX-284):** ① a card declared a deliverable url yet wired no
+capture AC → honest-skip / empty shell forever; ② a clear UI redesign lacking
+the literal keyword slipped the iron rule (keyword-as-enabler leak). Both are
+caught here at the spec source.
+
+---
+
 ## 1. Idempotency 🔁
 
 **Definition:** Performing the same operation N times produces the same result as performing it once.
