@@ -44,8 +44,11 @@ Every hub must include `## Gotchas` or `## Known Failure Modes`.
 - Treat the section as append-mostly unless an entry is proven obsolete.
 - Never instruct agents to `source "$(command -v roll)"`: the TS-native `roll`
   is a bundled CLI, not a bash library, and sourcing it executes JS as shell
-  (FIX-274). Skill steps call `roll <command>` directly — e.g. self-score notes
-  go through `roll self-score <skill> <story> <score> <verdict> "<rationale>"`.
+  (FIX-274). Skill steps call `roll <command>` directly.
+- Skills do NOT self-score (FIX-343). The working agent never scores its own
+  story; the Review Score is a runner-side peer-review outcome, produced by a
+  Reviewer in a FRESH, separate session (never a sub-agent of the builder's
+  session). Do not author any `self-score` step into a skill.
 
 ## Maintenance Workflow
 

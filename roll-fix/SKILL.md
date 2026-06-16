@@ -34,7 +34,7 @@ Load when the user provides a FIX-XXX or BUG-XXX item, or asks for a focused hot
 
 - Every fix gets a regression signal or documented exception.
 - Blocking review findings are fixed in another TCR cycle.
-- Self-score note is required before exit.
+- The Review Score is produced by the runner's fresh-session peer Reviewer — the agent does NOT self-score.
 - Docs/code/product alignment is a DoD gate: user-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery.
 
 ## Gotchas

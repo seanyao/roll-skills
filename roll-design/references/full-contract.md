@@ -826,48 +826,16 @@ Each story must be:
 
 ---
 
-## Self-score (US-SKILL-010 / 013)
+## Review Score (FIX-343)
 
-After Step 5 (Write to BACKLOG) completes — i.e. once the new US rows are
-landed and the user has either confirmed or chosen `No` (story still
-queued) — write a single self-score note covering the design session:
+The design session is **not** self-scored. The designing agent **does NOT
+self-score**. A design Review Score — when one is produced — comes SOLELY from
+a Reviewer running in a FRESH, separate session (never a sub-agent of the
+designer's session), the same independence rule as build/fix.
 
-```bash
-# 1. pair-first (US-PAIR-009/010): when .roll/pairing.yaml enables the `score`
-#    stage, the paired heterogeneous agent scores the design session
-roll pair score US-XXX-NNN --skill roll-design --summary "<one-paragraph design-session summary>"
-# 2. ONLY when the command prints a fallback hint (pairing off / no candidate /
-#    timeout), write the self-score with the printed reason:
-roll self-score roll-design US-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>" --fallback-reason "<reason>"
-```
-
-> FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a
-> bash library — the old `source`-based `_skill_write_self_score`
-> path is dead. Retrying after a transient failure is safe (idempotent).
-
-Use the **first** US-id of the batch as the story handle (or the
-representative story when splitting). Run from the main project root; when the
-story already has a card folder the note lands there, otherwise it falls back
-to `.roll/notes/<date>-roll-design-<id>-<epoch>.md` so US-SKILL-014 can
-read trend data.
-
-Score guidance for design quality (integer 1..10):
-- **9..10** — clean split: every US is INVEST-compliant, profile
-  (est_min / risk_zone / chain_depth) filled, doc-refresh closer wired
-  when user-visible behaviour changed, peer-review unnecessary or
-  reached AGREE quickly.
-- **6..8** — split shipped but with caveats: one US borderline on
-  INVEST (e.g. shared file conflict), or Discuss had ESCALATE before
-  settling, or profile was partial.
-- **1..5** — split shipped but rough: missing doc-refresh closer,
-  profile fields skipped, USer story too coarse for AI cycle; flag a
-  follow-up `roll-design` pass.
-
-Verdict values:
-- `good` — design + split are clean.
-- `ok` — design is acceptable with one or two trade-offs noted.
-- `regression` — the split visibly broke something earlier (rare; e.g.
-  invalidated a previously-stable depends-on chain).
+The design-side peer Review Score path is tracked by **FIX-344** (the runner's
+score stage does not yet cover `roll-design`). Until FIX-344 lands, this skill
+emits no quality score; the agent just delivers the split + specs and stops.
 
 ---
 

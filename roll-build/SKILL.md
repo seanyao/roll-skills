@@ -34,7 +34,7 @@ Load when a user gives a US-XXX story or asks to ship a feature through Roll TCR
 
 - TCR for every micro-step.
 - No WIP commits or bypassed verification.
-- Self-review, attest, E2E evidence, and self-score remain required.
+- Self-review, attest, and E2E evidence remain required. The Review Score is produced by the runner's fresh-session peer Reviewer — the agent does NOT self-score.
 - Docs/code/product alignment is a DoD gate: user-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery.
 
 ## Gotchas

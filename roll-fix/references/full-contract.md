@@ -397,7 +397,7 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
 ```
 
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
-3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + self-score). A FIX usually carries a before/after pair (`screenshots/before-*.png` + `after-*.png`) — the坏态/好态 contrast is the clearest proof a bug is gone.
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + Review Score). A FIX usually carries a before/after pair (`screenshots/before-*.png` + `after-*.png`) — the坏态/好态 contrast is the clearest proof a bug is gone.
 4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
    renders, open it and run the checklist below. This is a presentation review of
    the rendered HTML, NOT an evidence review.
@@ -507,34 +507,22 @@ A minor change is only "done" when all are true:
 - [ ] Deployment completed
 - [ ] Online verification performed
 - [ ] **Verification Gate passed** (fresh evidence for tests, build, fix confirmation, no regression)
-- [ ] **Self-score note written (US-SKILL-010 / 011)** — before exit, the agent
-      writes a structured score note via `roll self-score` so trend
-      analysis (US-SKILL-014) and skill-self-scoring docs (US-SKILL-015) have
-      data to read.
+### Review Score (FIX-343)
 
-### Self-score (US-SKILL-011)
+The Review Score is **not** produced by this skill. The fixing agent **does NOT
+self-score**. The quality score is produced SOLELY by the runner's peer score
+stage — a Reviewer running in a FRESH, separate session (never a sub-agent of
+the builder's session). The agent's job is to deliver clean evidence (report +
+ac-map + attest); the runner then casts a fresh-session Reviewer that mints the
+Review Score (1..10 + verdict + rationale), recorded with `scoredBy` and the
+fresh-session id so independence is verifiable.
 
-Before exiting the cycle, ensure one score note lands. **Pair-first
-(US-PAIR-009/010): when `.roll/pairing.yaml` enables the `score` stage, the
-paired heterogeneous agent produces the score — self-score is the fallback,
-not the default.** Run from the main project root (the directory holding
-`.roll/`); the note lands under `.roll/features/<epic>/<FIX-id>/notes/<date>-roll-fix-<FIX-id>-<epoch>.md` (the card folder is the note home, US-META-008; epic resolution and the `.roll/notes/` fallback are built in):
+Independence is about session/context, not vendor: a fresh same-vendor session
+is the minimum acceptable; a different agent+model+session (non-sub-agent) is
+encouraged (absolute heterogeneity). A score sharing the builder's session
+(including any sub-agent of it) is rejected as a self-score.
 
-```bash
-# 1. pair-first: ask the paired heterogeneous agent to score the cycle
-roll pair score FIX-XXX-NNN --summary "<one-paragraph delivery summary>"
-# 2. ONLY when the command prints a fallback hint (pairing off / no candidate /
-#    timeout), write the self-score with the printed reason:
-roll self-score roll-fix FIX-XXX-NNN <score 1..10> <good|ok|regression> "<rationale>" --fallback-reason "<reason>"
-```
-
-Both commands are idempotent — retrying after a transient failure is safe.
-
-> FIX-274: the TS-native `roll` is a bundled CLI and MUST NOT be sourced as a
-> bash library — the old `source`-based `_skill_write_self_score`
-> path is dead. Retrying after a transient failure is safe (idempotent).
-
-Score guidance (integer 1..10):
+Score guidance the Reviewer applies (integer 1..10):
 - **9..10** — clean root-cause fix; regression test added; TCR cycle smooth.
 - **6..8** — fix shipped but with caveats (e.g. workaround, partial coverage,
   or repeated TCR red iterations); rationale explains the trade-off.

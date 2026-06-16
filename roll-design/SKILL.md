@@ -30,7 +30,6 @@ Load when the user wants to discuss approaches, design a solution, model domains
 3. Detailed design before decomposition — for any non-trivial work, produce a concrete, implementable design artifact and get owner sign-off: (a) data/contract schema, (b) AT LEAST ONE complete worked sample of the intended output/behavior, (c) key interface signatures, (d) mapping/normalization rules, (e) edge cases & failure modes. Depth scales with risk/novelty; trivial work may be light.
 4. Split into INVEST stories — each a slice of the agreed detailed design.
 5. Write specs through roll story new and update backlog.
-6. Self-score the design quality.
 
 ## Hard Gates
 
