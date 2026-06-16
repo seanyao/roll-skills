@@ -728,6 +728,10 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
   deliverable_url: .roll/features/index.html#casting   # alias: screenshot_url. The actual deliverable page, NEVER the card's own dossier/report page.
   ---
   ```
+- **Pin down the deliverable surface — locate it, don't guess** (`deliverable_url` MUST be the EXACT page + anchor the story lands on):
+  - *Existing surface* → cite the real tab/anchor and VERIFY it exists (grep the generated page for the `#anchor`); never a parent or plausible-but-wrong page.
+  - *New feature* → DECIDE and NAME where it lands (which page / tab / route it is added to); that landing point IS the `deliverable_url` (it may not exist until this story builds it — that is expected; FIX-309 will require a real capture of it at attest, so a wrong/empty target fails loud).
+  - Never the card's dossier; never a generic page when the story changes a specific sub-surface.
 - A card with genuinely NO user-visible surface (pure data-migration, infra, …) instead records:
   ```yaml
   ---
