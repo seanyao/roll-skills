@@ -58,13 +58,7 @@ Allowed states only. No invented words.
 - **OBJECT**: The proposal is wrong. Provide an alternative. Proceed to next round.
 - **ESCALATE**: Round 3 reached without AGREE, or a round fails due to API/token error. Hand off to the human user.
 
-After each round decision, emit a `peer` event to the cycle event stream:
-
-```bash
-# $round = current round number, $total = max rounds, $verdict = AGREE/REFINE/OBJECT/ESCALATE
-# $agents = e.g. "claude→deepseek"
-_loop_event peer "${round}/${total}" "$verdict" "$agents" 2>/dev/null || true
-```
+After each round decision, emit a `peer` event to the cycle event stream. The v3 runner writes events natively; do not call the retired bash helper `_loop_event`.
 
 If information is insufficient:
 ```

@@ -86,30 +86,19 @@ reason: <one short line — which condition triggered, with numbers>
 When `verdict: ok` → continue to Step A2 normally.
 When `verdict: too_big` → go to **US-AGENT-008 self-downgrade path**, **but** first run the **US-AGENT-009 chain_depth cap check**:
 
-```bash
-# 0a. Cap check: refuse the third consecutive auto-split.
-#     exit 0 → split allowed; exit 1 → cap hit, take cap-hit path instead.
-if ! bash -c 'source "$(command -v roll)"; _loop_chain_depth_cap_check US-XXX-NNN'; then
-  # Cap hit (chain_depth ≥ 2): hold + ALERT, exit cleanly.
-  bash -c 'source "$(command -v roll)"; _loop_split_cap_hit US-XXX-NNN "depth >= 2, human triage required"'
-  exit 0
-fi
+> **v3 note (FIX-364)**: the retired bash helpers `_loop_chain_depth_cap_check`, `_loop_split_cap_hit`, and `_loop_self_downgrade` were removed with the v2 bash engine. v3 `roll` is a TS binary and cannot be sourced. The equivalent self-downgrade surface is being rebuilt in **US-AGENT-042** as `roll loop self-downgrade <story> <reason> <sub-ids>`; until that lands, the skill should **not** invoke the dead bash helpers above. If a story is genuinely too big for a single cycle, raise an ALERT and exit cleanly without TCR commits.
 
-# 1. Invoke roll-design to re-split the story into smaller sub-stories.
-#    Each sub-story carries chain_depth = (parent.chain_depth + 1).
-#    Sub-stories land as 📋 Todo with depends-on:<parent> chained.
-Skill("roll-design", "--from-story US-XXX-NNN")
+1. Invoke `roll-design` to re-split the story into smaller sub-stories.
+   Each sub-story carries `chain_depth = (parent.chain_depth + 1)`.
+   Sub-stories land as 📋 Todo with `depends-on:<parent>` chained.
+2. After the sub-stories are written to BACKLOG, flip the parent to 🚫 Hold
+   and emit the downgrade event.
+3. Exit cleanly — no TCR commits this cycle. The next loop cycle picks up
+   the first sub-story (which is smaller and should pass pre-flight).
 
-# 2. After the sub-stories are written to BACKLOG, flip the parent
-#    to 🚫 Hold and emit the downgrade event. The helper handles ALERT.
-bash -c 'source "$(command -v roll)"; _loop_self_downgrade US-XXX-NNN "too_big: <reason from verdict>" "US-XXX-NNNa,US-XXX-NNNb"'
-
-# 3. Exit cleanly — no TCR commits this cycle. The next loop cycle picks
-#    up the first sub-story (which is smaller and should pass pre-flight).
-exit 0
-```
-
-If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible), fall through to **US-AGENT-009 cap-hit path** by invoking `_loop_split_cap_hit` directly. The cap is purely about stopping infinite split chains; even on the first re-split, if the design step gives up, the cap-hit handler raises ALERT for human triage.
+If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible),
+treat it as a cap-hit: hold the parent, write an ALERT for human triage, and
+exit cleanly. The cap exists purely to stop infinite split chains.
 
 > Pre-flight is honest, not paranoid: a small story (est_min ≤ 8 — the `easy` tier — with chain_depth=0) should almost always go `ok`. The check pays off on the long tail — stories with a large `est_min` that, on inspection, plainly compose far more files and behaviours than one cycle can land green.
 
@@ -389,12 +378,7 @@ When any signal appears, **do not stop — flag it**:
 
 Then continue implementing the current Story normally.
 
-**Event emission** — after all TCR micro-steps for a Story complete, emit a `build` event so the cycle event stream reflects the work done:
-
-```bash
-# _tcr_count = number of "tcr:" prefix commits made during this Story
-_loop_event build "$US_ID" "${_tcr_count} commits" "" 2>/dev/null || true
-```
+**Event emission** — after all TCR micro-steps for a Story complete, emit a `build` event so the cycle event stream reflects the work done. The v3 runner writes events natively; do not call the retired bash helper `_loop_event`.
 
 ### Phase 4: E2E Deposit
 

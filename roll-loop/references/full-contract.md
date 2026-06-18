@@ -89,7 +89,7 @@ loop:
 ### Step 1 — Orphan 🔨 Recovery
 
 Process-level crash recovery (LOCK, heartbeat, retry budget) is handled by
-the runner in `bin/roll:_write_loop_runner_script` — the per-project LOCK
+the v3 runner (`packages/cli/src/runner/run-cycle.ts`) — the per-project LOCK
 guarantees only one cycle for this slug is alive when you start. So at
 this point, any `🔨 In Progress` row in `.roll/backlog.md` belongs to a
 previous cycle that crashed before flipping it back; reclaim it before
@@ -132,27 +132,27 @@ Before scanning BACKLOG, process open PRs first. PRs are also units of work:
 external contributors and human teammates expect their PRs to be reviewed and
 moved forward, not starved while loop opens new fronts.
 
-Call `_loop_pr_inbox` after the pre-run CI check passes. It walks
+Call `roll loop pr-inbox` after the pre-run CI check passes. It walks
 `gh pr list --state open` and routes each PR by classification:
 
 | Classification | Action |
 |---|---|
-| `loop_self` (head ref starts with `loop/` **or** `claude/`, CI not red) | `_loop_pr_merge_self_eager` — squash-merge directly when CI green + clean; if the PR is BEHIND/CONFLICTING with main, `_loop_pr_rebase_stale` rebases it first (circuit-gated) so it merges on a later tick. Never AI-review your own commit. (Agent-authored `claude/*` PRs are loop-owned the same way; a CI-red `claude/*` PR is **not** auto-healed — it falls through for a human to decide.) |
-| `loop_self_ci_red` (loop/* PR whose CI went red) | **US-LOOP-062a**: `_loop_pr_heal_self` — background-heal (per-PR lock + heal budget `ROLL_LOOP_HEAL_MAX`, default 2, via `_project_agent`); on `ROLL_LOOP_NO_HEAL=1` / budget exhausted → deduped `[TYPE:loop-pr-ci-red]` ALERT (never silently dropped) |
+| `loop_self` (head ref starts with `loop/` **or** `claude/`, CI not red) | squash-merge directly when CI green + clean; if the PR is BEHIND/CONFLICTING with main, rebase it first (circuit-gated) so it merges on a later tick. Never AI-review your own commit. (Agent-authored `claude/*` PRs are loop-owned the same way; a CI-red `claude/*` PR is **not** auto-healed — it falls through for a human to decide.) |
+| `loop_self_ci_red` (loop/* PR whose CI went red) | **US-LOOP-062a**: background-heal via `roll loop pr-heal-run` (per-PR lock + heal budget `ROLL_LOOP_HEAL_MAX`, default 2, via the configured agent); on `ROLL_LOOP_NO_HEAL=1` / budget exhausted → deduped `[TYPE:loop-pr-ci-red]` ALERT (never silently dropped) |
 | `blocked_human_request_changes` | Skip — last human review requested changes; wait for the author to push fixes |
-| `blocked_human_approved` | **US-LOOP-062b**: `_loop_pr_merge_approved` — merge directly (`gh pr merge --squash`) when CI green + mergeable, instead of relying on repo auto-merge (which may be off); merge failure is non-fatal (retried next tick) |
-| `stale` (CI failed or branch behind/conflicting) | Try `_loop_pr_rebase_stale` after the circuit breaker allows it |
-| `eligible` (clean external PR, no blocking review) | Invoke `_loop_pr_review_external` — the actual decision is provided by US-AUTO-035's GitHub Action |
+| `blocked_human_approved` | **US-LOOP-062b**: merge directly (`gh pr merge --squash`) when CI green + mergeable, instead of relying on repo auto-merge (which may be off); merge failure is non-fatal (retried next tick) |
+| `stale` (CI failed or branch behind/conflicting) | Rebase onto `origin/main` after the circuit breaker allows it |
+| `eligible` (clean external PR, no blocking review) | Review via `roll review-pr` (or the equivalent project agent skill) — the actual decision is provided by US-AUTO-035's GitHub Action |
 
-**Rebase circuit breaker** — `_loop_pr_rebase_circuit <pr>` records each rebase
-attempt under `pr_state.<PR>.attempts_at` in the per-slug state file
+**Rebase circuit breaker** — the runner records each rebase attempt under
+`pr_state.<PR>.attempts_at` in the per-slug state file
 (`~/.shared/roll/loop/state-<slug>.yaml`, FIX-052), pruning entries older
 than 24 h. Once ≥3 attempts land within 24 h, further rebases are blocked and an
 ALERT is written (typical cause: a broken workflow file makes CI never run,
 which would otherwise drive infinite rebase loops).
 
 **Lenient on infrastructure** — `gh` missing, repo unparseable, or any
-`gh` API failure → `_loop_pr_inbox` returns 0 and the loop falls through to
+`gh` API failure → `roll loop pr-inbox` returns 0 and the loop falls through to
 Step 2 (BACKLOG scan). Same posture as the pre-run CI check.
 
 ### Step 2 — Scan BACKLOG
@@ -172,27 +172,19 @@ claimed by an **open `loop/*` PR**. Each cycle's worktree is branched from
 locally until that cycle's PR merges. Without this gate, two cycles started
 back-to-back will both pick the same Todo row and produce duplicate PRs.
 
-```bash
-bash -c 'source "$(command -v roll)"; _loop_pr_claimed_stories'
-#   stdout: one story ID per line (deduped) — these are claimed by open
-#           loop/* PRs on the remote. SKIP any candidate whose ID appears.
-#   exit 0 always (lenient: gh missing / API error → empty output).
-```
+Use `roll loop pr-inbox` to discover story IDs already claimed by open
+`loop/*` PRs on the remote. Skip any candidate whose ID appears. The runner is
+lenient: `gh` missing / API error → empty claim list.
 
-**Dependency gate** (FIX-032). For each `📋 Todo` candidate, before picking:
-
-```bash
-# Source bin/roll once per cycle, then call the helper per candidate.
-source "$(command -v roll)"
-
-bash -c 'source "$(command -v roll)"; _loop_check_depends_on "<story-id>" .roll/backlog.md'
-#   exit 0 → all `depends-on:US-X,US-Y` are ✅ Done → eligible
-#   exit 1 → stdout lists unsatisfied dep IDs; SKIP this story, log to
-#            runs.jsonl `skipped` with reason "depends-on: <unsatisfied>"
-```
+**Dependency gate** (FIX-032). For each `📋 Todo` candidate, before picking,
+check that every `depends-on:<ID>` referenced in the story's backlog row is
+already ✅ Done. The v3 runner evaluates dependencies natively; do not call the
+retired bash helper `_loop_check_depends_on`. If a dependency is unsatisfied,
+skip the story and log to `runs.jsonl` `skipped` with reason
+`"depends-on: <unsatisfied>"`.
 
 Move to the next candidate when skipping. The gate is a pure function
-over .roll/backlog.md text — no side effects, no LOCK interaction.
+over `.roll/backlog.md` text — no side effects, no LOCK interaction.
 
 Cap at `max_items_per_run` to limit blast radius per cycle.
 
@@ -200,7 +192,7 @@ Cap at `max_items_per_run` to limit blast radius per cycle.
 
 Loop has two layers of concurrency protection:
 
-1. **Per-project LOCK** (enforced by runner script, see `bin/roll:_write_loop_runner_script`):
+1. **Per-project LOCK** (enforced by the v3 runner, see `packages/cli/src/runner/run-cycle.ts`):
    - LOCK file path: `~/.shared/roll/loop/.LOCK-<project-slug>`
    - On launch: if LOCK exists and the PID inside is alive → exit 0 (previous loop still running)
    - On launch: if LOCK exists but PID is dead → clean up stale LOCK and continue
@@ -219,42 +211,30 @@ Together these mean: only one loop runs at a time per project (LOCK), and within
 
 > **US-AGENT-006 — Per-story agent routing (pre-cycle)**
 >
-> Before this skill even starts, the runner inner script has already:
-> 1. Picked the next eligible Todo via `_loop_pick_next_story` (priority FIX > US > REFACTOR, depends-on gate respected)
-> 2. Read its Agent profile (est_min / risk_zone) and routed an agent via `_loop_pick_agent_for_story` (hard rules from `.roll/agent-routes.yaml` + soft preference from `runs.jsonl`)
-> 3. Exported `ROLL_LOOP_ROUTED_STORY` / `ROLL_LOOP_ROUTED_AGENT` / `ROLL_LOOP_ROUTED_RULE` and printed `[loop] story <id> routed to <agent> via <rule_kind>` to cron.log
+> Before this skill even starts, the v3 runner has already:
+> 1. Picked the next eligible Todo (priority FIX > US > REFACTOR, depends-on gate respected).
+> 2. Read its Agent profile (`est_min` / `risk_zone`) and routed an agent (hard rules from `.roll/agent-routes.yaml` + soft preference from `runs.jsonl`).
+> 3. Exported `ROLL_LOOP_ROUTED_STORY` / `ROLL_LOOP_ROUTED_AGENT` / `ROLL_LOOP_ROUTED_RULE` and printed `[loop] story <id> routed to <agent> via <rule_kind>` to cron.log.
 >
-> When `ROLL_LOOP_ROUTED_STORY` is set, prefer it as `US_ID` for this cycle. The story has already been chosen by hard+soft routing rules — and, per FIX-146, the runner re-validates it against the authoritative backlog right before handing it to you (re-picking the next eligible Todo if it went ✅ Done / In Progress / ineligible between pick and handoff, emitting a `story_stale` event). So treat `ROLL_LOOP_ROUTED_STORY` as already-eligible and just work it. Only if you still find at cycle start that it is no longer 📋 Todo in BACKLOG (a residual concurrent flip), re-pick the next eligible Todo via `_loop_pick_next_story` rather than idling the whole cycle.
+> When `ROLL_LOOP_ROUTED_STORY` is set, prefer it as `US_ID` for this cycle. The story has already been chosen by hard+soft routing rules — and, per FIX-146, the runner re-validates it against the authoritative backlog right before handing it to you (re-picking the next eligible Todo if it went ✅ Done / In Progress / ineligible between pick and handoff, emitting a `story_stale` event). So treat `ROLL_LOOP_ROUTED_STORY` as already-eligible and just work it. Only if you still find at cycle start that it is no longer 📋 Todo in BACKLOG (a residual concurrent flip), signal `story_stale` and let the runner pick the next eligible Todo rather than idling the whole cycle.
 >
 > Old single-agent fallback (`primary_agent` from `~/.roll/config.yaml`) still applies when:
 > - no story is pickable (empty Todo / all blocked by depends-on)
 > - the matching agent-routes.yaml has no agent that fits the story profile (then `cold_start_default` is used)
 
-For each item, **before invoking the executor skill**, mark the story 🔨 In Progress in the **main repo's** .roll/backlog.md so brief and peer agents can see it being worked on. The cycle worktree is gitignored at .roll/, so editing the worktree's own copy + committing carries no change back to main — write directly via the helper instead:
+For each item, **before invoking the executor skill**, mark the story 🔨 In Progress in the **main repo's** `.roll/backlog.md` so brief and peer agents can see it being worked on. The cycle worktree is gitignored at `.roll/`, so editing the worktree's own copy + committing carries no change back to main — write directly via the backlog store instead. The v3 runner updates `${ROLL_MAIN_PROJECT}/.roll/backlog.md` in place; do not call the retired bash helpers `_loop_mark_in_progress` / `_loop_mark_todo`.
 
-```bash
-bash -c 'source "$(command -v roll)"; _loop_mark_in_progress US-XXX'
-# Updates ${ROLL_MAIN_PROJECT}/.roll/backlog.md in place: flips the row
-# containing US-XXX from "📋 Todo" to "🔨 In Progress". Idempotent.
-```
+If the executor fails (TCR aborts, CI red, etc.), revert the marker so the next cycle can re-pick the story.
 
-If the executor fails (TCR aborts, CI red, etc.), revert the marker so the next cycle can re-pick the story:
+Status flips happen in main directly — no per-cycle commit needed. `roll-brief` reads main's backlog, so the 🔨 marker is visible the moment the update returns.
 
-```bash
-bash -c 'source "$(command -v roll)"; _loop_mark_todo US-XXX'
-```
+选定故事后，发出 `pick_todo` 事件，让 dashboard / monitor / attach 都能把"这个 cycle 选了哪个 story"正确归类。 The v3 runner emits events natively; do not call the retired bash helper `_loop_event`.
 
-Status flips happen in main directly — no per-cycle commit needed. `roll-brief` reads main's backlog, so the 🔨 marker is visible the moment the helper returns.
-
-选定故事后，调用 `_loop_event` 发出 pick_todo 事件，让 dashboard / monitor / attach 都能把"这个 cycle 选了哪个 story"正确归类：
-
-```bash
-# 选定故事后立即 emit（在调用 executor skill 之前）
-# label 必须是 cycle_id（来自 bin/roll 注入的 LOOP_CYCLE_ID 环境变量），
-# 不是 US_ID — dashboard 按 label 聚类，US_ID 当 label 会让事件分到错的桶
-# 里，cycle 看起来"有 token 没 ID"。
-_loop_event pick_todo "$LOOP_CYCLE_ID" "$US_ID" ""
-```
+- Emit immediately after picking and before invoking the executor skill.
+- `label` must be the `cycle_id` (from the `LOOP_CYCLE_ID` environment variable),
+  not `US_ID` — the dashboard groups by label, and using `US_ID` as the label
+  would put events in the wrong bucket, making the cycle appear to have tokens
+  but no ID.
 
 Then invoke the executor:
 
@@ -287,8 +267,8 @@ After each item completes:
    - Count `tcr:` prefix commits since `started_at` via `git log --oneline --since=<started_at>`
    - Count == 0 → revert story status in .roll/backlog.md from ✅ Done → 📋 Todo; write ALERT to `~/.shared/roll/loop/ALERT-<slug>.md` with story ID, time, reason "zero tcr: commits since story start", and suggested actions (`roll loop now` / `$roll-build <id>` / `roll loop reset`)
    - Count > 0 → continue normally
-2. **CI Gate** — **MUST** invoke `roll ci --wait` (the `_loop_enforce_ci`
-   wrapper). **Do NOT call `gh` directly** (no `gh run list`, no `gh run watch`,
+2. **CI Gate** — **MUST** invoke `roll ci --wait`. **Do NOT call `gh` directly**
+   (no `gh run list`, no `gh run watch`,
    no ad-hoc shell checks): `roll ci --wait` is the only sanctioned entry —
    it derives `owner/repo` from the git remote and uses `gh -R <slug>`, which
    is required to work through `~/.ssh/config` host rewrites that break gh's
@@ -327,7 +307,7 @@ After each item completes:
       merges / rebases / closes it asynchronously. There is no false-Done risk:
       with worktree isolation the ✅ Done lives only in the unmerged PR, never on
       the loop's main checkout, and the story is not re-picked meanwhile via the
-      open-PR eligibility gate (`_loop_story_is_eligible`, FIX-146). The story's
+      open-PR eligibility gate (FIX-146). The story's
       ✅ Done lands on main only when the PR Loop actually merges the PR.
    2. Write ALERT to `~/.shared/roll/loop/ALERT-<slug>.md` with:
       - story ID, time, commit SHA
@@ -346,10 +326,9 @@ After each item completes:
 
 ### Step 5 — Write Run Summary
 
-> **FIX-044**: The inner runner script (`_write_loop_runner_script` in `bin/roll`)
-> now appends this record deterministically at cycle end. The shell write is the
-> authoritative record; the agent should still emit a run summary in the cycle's
-> final report for `cron.log` visibility.
+> **FIX-044**: The v3 runner (`packages/cli/src/runner/run-cycle.ts`) appends
+> this record deterministically at cycle end. The agent should still emit a run
+> summary in the cycle's final report for `cron.log` visibility.
 
 After all items in this cycle:
 

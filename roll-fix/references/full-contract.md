@@ -129,18 +129,13 @@ Emit `verdict: ok` or `verdict: too_big` (with `reason:`) as the first cycle out
 - `ok` → continue with step 1 below normally
 - `too_big` → self-downgrade per US-AGENT-008, **gated by US-AGENT-009 cap check**:
 
-```bash
-# Cap check first (chain_depth ≥ 2 → refuse third auto-split).
-if ! bash -c 'source "$(command -v roll)"; _loop_chain_depth_cap_check FIX-XXX-NNN'; then
-  bash -c 'source "$(command -v roll)"; _loop_split_cap_hit FIX-XXX-NNN "depth >= 2"'
-  exit 0
-fi
-Skill("roll-design", "--from-story FIX-XXX-NNN")
-bash -c 'source "$(command -v roll)"; _loop_self_downgrade FIX-XXX-NNN "too_big: <reason>" "FIX-XXX-NNNa,FIX-XXX-NNNb"'
-exit 0
-```
+> **v3 note (FIX-364)**: the retired bash helpers `_loop_chain_depth_cap_check`, `_loop_split_cap_hit`, and `_loop_self_downgrade` were removed with the v2 bash engine. v3 `roll` is a TS binary and cannot be sourced. The equivalent surface is being rebuilt in **US-AGENT-042** as `roll loop self-downgrade <story> <reason> <sub-ids>`; until that lands, if a fix is genuinely too big for one cycle, raise an ALERT and exit cleanly without TCR commits.
 
-Original FIX goes to 🚫 Hold with `→ split to ...` annotation; sub-stories carry `chain_depth + 1`. Cap-hit path raises ALERT for human triage. Do NOT TCR a half fix.
+If split is possible, invoke `roll-design --from-story FIX-XXX-NNN` to mint
+sub-stories, then flip the original FIX to 🚫 Hold with a `→ split to ...`
+annotation; sub-stories carry `chain_depth + 1`. If the split cap is hit or
+`roll-design` cannot produce ≥2 sub-stories, write an ALERT for human triage.
+Do NOT TCR a half fix.
 
 Bug fixes are usually small (est_min ≤ 5), so pre-flight is mostly a sanity barrier for FIXes whose underlying issue turns out structural — e.g. a "simple null check" that requires touching 12 files. Catching that upfront is cheaper than burning a cycle.
 

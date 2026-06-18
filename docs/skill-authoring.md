@@ -42,9 +42,10 @@ Every hub must include `## Gotchas` or `## Known Failure Modes`.
 - If a gotcha comes from a missed load, add a positive route case.
 - If a gotcha comes from an off-target load, add a negative route case.
 - Treat the section as append-mostly unless an entry is proven obsolete.
-- Never instruct agents to `source "$(command -v roll)"`: the TS-native `roll`
-  is a bundled CLI, not a bash library, and sourcing it executes JS as shell
-  (FIX-274). Skill steps call `roll <command>` directly.
+- Never instruct agents to source the `roll` binary as if it were a shell
+  library: the TS-native `roll` is a bundled CLI, not a bash script, and
+  `source "$(command -v roll)"` executes JS as shell (FIX-274). Skill steps call
+  `roll <command>` directly.
 - Skills do NOT self-score (FIX-343). The working agent never scores its own
   story; the Review Score is a runner-side peer-review outcome, produced by a
   Reviewer in a FRESH, separate session (never a sub-agent of the builder's
