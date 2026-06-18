@@ -61,16 +61,6 @@
         "ask another agent for peer negotiation"
       ]
     },
-    "roll-brief": {
-      "positive": [
-        "prepare an owner-facing digest of completed and in-progress Roll work",
-        "summarize backlog queue, escalations, and release readiness"
-      ],
-      "negative": [
-        "write public release notes for users",
-        "capture a one-line idea into backlog"
-      ]
-    },
     "roll-build": {
       "positive": [
         "execute US-AUTH-001 through TCR and verification",
@@ -209,16 +199,6 @@
       "negative": [
         "self-review a local TCR micro-step",
         "run attacker and defender agents for high-risk logic"
-      ]
-    },
-    "roll-sentinel": {
-      "positive": [
-        "sample production behavior against backlog requirements",
-        "run cost-controlled patrol checks on deployed flows"
-      ],
-      "negative": [
-        "scan code architecture for refactor candidates",
-        "debug a local browser page with console capture"
       ]
     },
     "roll-spar": {
