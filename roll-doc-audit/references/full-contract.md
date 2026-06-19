@@ -6,7 +6,7 @@ This file preserves the detailed contract extracted from SKILL.md. Read it when 
 
 # roll-doc-audit
 
-Documentation/product consistency audit plus legacy documentation automation (and deep-read Phase 3b): scan docs, user guidance, site pages, CLI help, and code surfaces → index → gap analysis → fill (directory-level) → deep read (cross-directory topics).
+Documentation/product consistency audit plus legacy documentation automation (and deep-read Phase 3b): consistency audit (Phase 0 — shipped surfaces vs docs) → scan docs, user guidance, site pages, CLI help, and code surfaces → index → gap analysis → fill (directory-level) → deep read (cross-directory topics).
 
 Works on any project root. No manual mode switching — reads the project state and decides what to do.
 
@@ -31,6 +31,207 @@ $roll-doc-audit              # Full consistency/inventory run
 $roll-doc-audit --dry-run    # Phases 1–2 only; print Phase 3 plan without writing any files
 $roll-doc-audit --force      # Re-generate drafts even for existing files
 ```
+
+## Phase 0 — Consistency Audit
+
+Run this phase **first**, before the inventory phases (1–3b). The inventory phases ask
+*"what is undocumented?"*; Phase 0 asks the sharper release-time question: *"does every shipped
+user-facing surface have a doc, and does that doc still tell the truth?"* It is the
+judgment-heavy pass — enumerate the real surfaces, compare them against the docs, and draft the
+drift fixes.
+
+**Skill vs. gate.** This skill is the **investigator + drafter**: a human (or agent) runs it to
+find drift and write the fix. The *deterministic, enumerable* subset of these same checks is
+**also** enforced inside the `roll release` consistency gate (`release-consistency.ts`), so a
+drift cannot silently ship even when nobody runs this skill. The gate is the **floor** (it
+blocks the release on the mechanical mismatches it can prove); this skill is the **ceiling** (it
+also catches the judgment cases — a description that is technically present but stale, a doc that
+contradicts behavior — that a mechanical check cannot decide). Run the skill to investigate and
+fix; trust the gate to keep the floor from dropping.
+
+**Scope:** Phase 0 reads only — it never writes during the audit itself. Its output is the
+**Consistency Report** (template at the end of this phase) plus a list of drafted fixes the
+operator reviews and applies. As with every other phase, do not fabricate behavior: every
+"Accurate?" verdict must cite the source (help text, code path, or guide line) it was checked
+against.
+
+This phase has three check-classes. Run all three.
+
+### 0.1 — Shipped-surface coverage
+
+Enumerate every user-facing surface the product ships, then assert each one is **documented**
+AND **described accurately** (the doc's description matches actual behavior, not a stale copy).
+
+**Surface 1 — CLI commands.**
+
+Gather the evidence:
+
+```
+# every top-level command
+roll --help            # or: node dist/roll.mjs --help
+
+# every subcommand of a command that has subcommands
+roll <command> --help  # e.g. roll loop --help, roll agent --help
+```
+
+Parse the command/subcommand list and each one-line description out of the help output. For each
+command, locate its documentation in `guide/{en,zh}/*.md` and/or `README.md` (grep the command
+name).
+
+- **Pass:** the command appears in at least one guide page or `README.md`, AND the documented
+  description does not contradict the `--help` description / actual behavior.
+- **Fail (undocumented):** a command exists in `--help` but no guide/README mentions it.
+- **Fail (stale):** a command is documented, but the doc's description disagrees with `--help`
+  or with the implemented behavior (e.g. renamed flag, removed option, changed default).
+
+Draft the fix: for an undocumented command, draft the missing guide section (purpose, synopsis,
+options) from the `--help` text and the command's source. For a stale description, draft the
+corrected sentence and cite the `--help` line or code path that proves the new truth.
+
+**Surface 2 — Web-console pages / machine-global breadcrumb entries.**
+
+The product's console exposes a fixed set of machine-global pages (e.g. **Agents · Skills ·
+Tools · Conventions · About**). Each shipped page must be reflected in the site copy
+(`site/roll-data.js`) and in the guides.
+
+Gather the evidence:
+
+```
+# the breadcrumb / nav set as the site renders it
+grep -nE "Agents|Skills|Tools|Conventions|About" site/roll-data.js
+
+# the guide pages that should describe those surfaces
+ls guide/en guide/zh
+```
+
+- **Pass:** every shipped console page is present in `site/roll-data.js` and has a corresponding
+  guide treatment.
+- **Fail:** a console page ships but `site/roll-data.js` (or the guide) never reflects it, or the
+  site lists a page that no longer exists.
+
+Draft the fix: add/correct the `site/roll-data.js` entry and draft the guide paragraph for the
+missing page; cite the page's source.
+
+**Verdict for 0.1:** flag *any* shipped surface with **no doc**, or **a doc whose description
+contradicts the implementation**. Each flag becomes a row in the Consistency Report.
+
+### 0.2 — Changelog coverage of the release delta
+
+Assert that every user-facing card merged since the last release is reflected in `CHANGELOG.md`.
+
+Gather the evidence:
+
+```
+# latest release tag (roll tags look like v2026.601.4)
+LATEST=$(git describe --tags --abbrev=0 --match 'v*')
+
+# commits merged since that tag
+git log "$LATEST"..HEAD --oneline
+
+# card ids in the delta (US-/FIX-/REFACTOR-)
+git log "$LATEST"..HEAD --format='%s%n%b' | grep -oE '(US|FIX|REFACTOR)-[0-9]+' | sort -u
+```
+
+For each card id in the delta, decide whether it is **user-facing** (changes CLI behavior,
+output, flags, console pages, or documented workflow) — purely internal refactors that change no
+surface are out of scope. Then:
+
+- **Pass:** the user-facing card has a `CHANGELOG.md` entry **or** its spec carries an explicit
+  `changelog_exempt:` marker (read the card's spec under `.roll/features/` to check).
+- **Fail:** a user-facing delta card has neither a `CHANGELOG.md` entry nor a `changelog_exempt:`
+  marker — it would ship undocumented.
+
+Check changelog presence:
+
+```
+grep -nE '(US|FIX|REFACTOR)-[0-9]+' CHANGELOG.md
+```
+
+Draft the fix: for each missing user-facing card, draft a plain-language `CHANGELOG.md` line
+(what changed / what the user can now do) from the card's spec and merged diff — no internal
+jargon. If the card is genuinely not user-facing, note that it needs a `changelog_exempt:`
+marker rather than a changelog line, and say why.
+
+**Verdict for 0.2:** report every user-facing delta card that would ship undocumented.
+
+### 0.3 — Site-copy ↔ generated-console consistency
+
+Assert that `site/roll-data.js` matches reality on three axes. This is the class where a new
+guide page or console page ships but the site index is never updated to link it.
+
+Gather the evidence:
+
+```
+# every guide file that exists on disk
+ls guide/en guide/zh
+
+# the guide nav / page list the site actually exposes
+grep -nE "guide|slug|nav|page" site/roll-data.js
+
+# the machine-global breadcrumb description and the skill tiles
+grep -nE "Agents|Skills|Tools|Conventions|About|skill" site/roll-data.js
+```
+
+Then check each axis:
+
+1. **Guide reachability** — every `guide/<lang>/*.md` file on disk is reachable from the site
+   guide nav defined in `site/roll-data.js`.
+   - **Fail:** a guide file exists but is not linked from the nav (orphaned page), or the nav
+     links a guide slug that has no file (dead link).
+2. **Breadcrumb completeness** — the machine-global breadcrumb description in `site/roll-data.js`
+   lists the **real** set of machine pages (the same set verified in 0.1, Surface 2).
+   - **Fail:** the breadcrumb omits a shipped page or lists a removed one.
+3. **Skill-tile correctness** — the skill tiles in `site/roll-data.js` match the actual skill
+   set (the `roll-*` skill directories that ship).
+   - **Fail:** a shipped skill has no tile, or a tile points to a retired skill.
+
+Draft the fix: add the missing nav entry / breadcrumb item / skill tile to `site/roll-data.js`,
+or remove the stale one; cite the on-disk file (or its absence) that proves the drift.
+
+**Verdict for 0.3:** flag every stale or missing `site/roll-data.js` entry.
+
+### Consistency Report
+
+After running 0.1–0.3, emit one report. One row per surface checked; group by check-class. The
+`Fix` column states the drafted correction (and, for an undocumented surface, the path of the
+draft).
+
+```markdown
+> roll-doc-audit — Consistency Report (YYYY-MM-DD)
+> Phase 0 read-only audit. Floor enforced by `roll release` consistency gate (release-consistency.ts).
+
+## 0.1 Shipped-surface coverage
+
+| Surface | Documented? | Accurate? | Drift | Fix |
+|---------|-------------|-----------|-------|-----|
+| `roll loop` (CLI) | ✅ guide/en/loop.md | ❌ | guide says `--once`, help says `--single` | draft: rename flag in loop.md:42, cite `roll loop --help` |
+| `roll agent swap` (CLI) | ❌ | — | command ships, no guide/README mention | draft guide/en/agents.md §swap from `roll agent swap --help` |
+| Console: Tools page | ✅ guide | ❌ site | page ships, missing from site/roll-data.js | draft: add Tools entry to site/roll-data.js |
+
+## 0.2 Changelog coverage of the release delta
+
+| Card | User-facing? | In CHANGELOG / exempt? | Drift | Fix |
+|------|--------------|------------------------|-------|-----|
+| US-AGENT-041 | yes | ❌ | merged since v2026.601.4, no entry | draft CHANGELOG line from spec |
+| REFACTOR-118 | no | — | internal only | mark `changelog_exempt:` in spec |
+
+## 0.3 Site-copy ↔ generated-console consistency
+
+| Surface | Documented? | Accurate? | Drift | Fix |
+|---------|-------------|-----------|-------|-----|
+| guide/zh/consistency.md | ✅ on disk | ❌ nav | file exists, not linked in site nav | draft: add nav entry to site/roll-data.js |
+| Skill tile: roll-doc-audit | ✅ | ❌ | tile still labeled `roll-doc` | draft: update tile id in site/roll-data.js |
+
+## Summary
+
+- Surfaces checked: N (CLI N / console N / changelog cards N / site entries N)
+- Drift found: N (undocumented N / stale N / unlinked N)
+- Drafted fixes: N — review and apply, then re-run.
+```
+
+A clean run prints the report with no drift rows and the summary line `Drift found: 0`.
+
+---
 
 ## Phase 1 — Scan & Index
 
