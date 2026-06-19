@@ -146,12 +146,12 @@ The catalog is auto-updated by the release script (maintainer-private at `roll-m
 
 ### Scan 6 — 文档新鲜度 (Doc Freshness)
 
-**Dependency gate**: Skip Scan 6 entirely when `$roll-doc` (US-SKILL-008) is not yet deployed.
-Check: `[ -f "$ROLL_HOME/skills/roll-doc/SKILL.md" ]`. If absent, log "Scan 6 skipped — roll-doc not deployed" in the dream log and stop. No fallback.
+**Dependency gate**: Skip Scan 6 entirely when `$roll-doc-audit` (US-SKILL-008) is not yet deployed.
+Check: `[ -f "$ROLL_HOME/skills/roll-doc-audit/SKILL.md" ]`. If absent, log "Scan 6 skipped — roll-doc-audit not deployed" in the dream log and stop. No fallback.
 
-When deployed, each finding produces a REFACTOR entry with `$roll-doc` as execution hint:
+When deployed, each finding produces a REFACTOR entry with `$roll-doc-audit` as execution hint:
 ```markdown
-| REFACTOR-XXX | docs: <description> — flagged by dream <date> (hint: $roll-doc) | 📋 Todo |
+| REFACTOR-XXX | docs: <description> — flagged by dream <date> (hint: $roll-doc-audit) | 📋 Todo |
 ```
 
 #### Check A — Stale Docs

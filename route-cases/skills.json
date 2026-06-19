@@ -101,8 +101,9 @@
         "hotfix a specific BUG-XXX item"
       ]
     },
-    "roll-doc": {
+    "roll-doc-audit": {
       "positive": [
+        "check README guide site and CLI help against implemented behavior",
         "scan docs and generate docs/INDEX.md",
         "find undocumented modules and draft missing documentation"
       ],

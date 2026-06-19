@@ -32,7 +32,7 @@ The initial `SKILL.md` line baseline was 7,929 lines. Current hub-only
 | roll-build | 884 | 48 | `references/full-contract.md` |
 | roll-fix | 641 | 48 | `references/full-contract.md` |
 | roll-debug | 607 | 48 | `references/full-contract.md`, `assets/injectable-bb.js` |
-| roll-doc | 595 | 46 | `references/full-contract.md` |
+| roll-doc-audit | 595 | 46 | `references/full-contract.md` |
 | roll-loop | 563 | 47 | `references/full-contract.md` |
 | roll-.changelog | 465 | 47 | `references/full-contract.md` |
 | roll-.dream | 374 | 47 | `references/full-contract.md` |

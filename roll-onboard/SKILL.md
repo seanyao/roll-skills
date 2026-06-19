@@ -29,7 +29,7 @@ You are the **认知 (cognition) layer**. Your job ends with writing a plan file
 | You do | You do NOT |
 |--------|------------|
 | Read project code, infer type/domains/modules | Modify any source file |
-| Call `roll-doc --dry-run` to get a gap report | Call `roll-doc` (write mode) |
+| Call `roll-doc-audit --dry-run` to get a gap report | Call `roll-doc-audit` (write mode) |
 | Ask the user 9 questions across 3 groups | Decide for the user |
 | Produce `.roll/onboard-plan.yaml` | Write `.gitignore` |
 | Produce `.roll/onboard-plan.yaml` | Run `roll init --apply` |
@@ -40,7 +40,7 @@ Hard constraint: **AI cannot create files in the user's project other than `.rol
 
 1. The repository tree (use the project's own structure to infer technologies)
 2. Any existing `README.md` / `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` etc. as evidence
-3. `roll-doc --dry-run` output → identifies what documentation gaps exist
+3. `roll-doc-audit --dry-run` output → identifies what documentation gaps exist
 4. The path-audit pattern: scan for legacy structure markers (`BACKLOG.md`, `docs/features/`, etc.) — if any are present, REFUSE and tell the user to run `npx @seanyao/roll@2 migrate` first
 
 ## Workflow
@@ -113,7 +113,7 @@ Map the findings into the three buckets:
 
 ### Step 2 — Get gap report
 
-Run `roll-doc --dry-run` (READ-ONLY mode). This reports:
+Run `roll-doc-audit --dry-run` (READ-ONLY mode). This reports:
 - Which standard Roll artifacts (BACKLOG, features, domain models) are missing
 - Which existing docs Roll could `include` rather than regenerate
 
