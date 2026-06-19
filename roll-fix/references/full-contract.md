@@ -542,6 +542,26 @@ Verdict values:
 - `ok` — shipped but with documented trade-offs (use rationale to explain).
 - `regression` — the fix re-broke something else (rare; consider re-opening).
 
+#### Reviewer-triggered resize (US-AGENT-041)
+
+A low score (≤ 5) splits two ways. A **quality** shortfall (weak test, narrow
+fix) just scores low and the loop retries. But when the FIX turned out
+**structurally too large for one cycle** (whole sub-problems uncovered, not
+defects), the Reviewer ALSO emits, beside SCORE/VERDICT/RATIONALE:
+
+```
+RESIZE: <one line — why the scope exceeds one cycle>
+GAPS: <gap one; gap two; ...>
+```
+
+On a RESIZE signal (low score) the loop runs `roll loop review-resize FIX-XXX`:
+`$roll-design` mints sub-stories from the gaps, ≥2 **heterogeneous** reviewers
+gate the split by consensus (all agree → auto-land via `roll loop self-downgrade`,
+parking the FIX at 🚫 Hold + appending sub-stories; any objection → pause +
+ALERT, backlog unchanged), with the chain-depth cap (US-AGENT-009) stopping
+runaway splits. The human is on the loop (alerted only on consensus failure or
+the cap), not in it. Never emit RESIZE for a pure quality problem.
+
 ## Rubric
 
 Quality evaluation for a completed fix. Score each dimension independently.

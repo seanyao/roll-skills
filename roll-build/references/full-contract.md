@@ -877,6 +877,28 @@ Verdict values:
 - `ok` — shipped but with at least one documented trade-off (use rationale).
 - `regression` — story landed but another behaviour broke (rare; open a FIX).
 
+#### Reviewer-triggered resize (US-AGENT-041)
+
+A low score (≤ 5) can mean two different things, and the Reviewer distinguishes
+them. When the delivery fell short because of a **quality** problem (a bug, a
+weak test), the Reviewer just scores low — the loop retries. But when it fell
+short because the **scope was simply too large for one cycle** (whole ACs or
+surfaces left uncovered, not defects), the Reviewer ALSO emits, alongside the
+SCORE/VERDICT/RATIONALE lines:
+
+```
+RESIZE: <one line — why the scope exceeds one cycle>
+GAPS: <gap one; gap two; gap three>
+```
+
+On a RESIZE signal (low score), the loop runs `roll loop review-resize <story>`:
+`$roll-design` mints sub-stories from the gaps, ≥2 **heterogeneous** reviewers
+gate the split by consensus (all agree → auto-land via `roll loop self-downgrade`,
+which parks the parent at 🚫 Hold + appends the sub-stories; any objection →
+pause + ALERT, backlog unchanged), and the chain-depth cap (US-AGENT-009) stops
+runaway splits. The human is **on** the loop (alerted only on consensus failure
+or the cap), not in it. A RESIZE is never emitted for a pure quality problem.
+
 ---
 
 ## TCR Recovery Patterns
