@@ -30,12 +30,14 @@ Load when the user wants to discuss approaches, design a solution, model domains
 3. Detailed design before decomposition — for any non-trivial work, produce a concrete, implementable design artifact and get owner sign-off: (a) data/contract schema, (b) AT LEAST ONE complete worked sample of the intended output/behavior, (c) key interface signatures, (d) mapping/normalization rules, (e) edge cases & failure modes. Depth scales with risk/novelty; trivial work may be light.
 4. Split into INVEST stories — each a slice of the agreed detailed design.
 5. Write specs through roll story new and update backlog.
+6. Wrap-up — trigger an independent peer Review Score of the design output (FIX-344): `roll pair score --design <story-id> --file <design-summary>`. The designing agent NEVER scores its own work; a fresh-session peer Reviewer produces the score. No peer available → honest unscored (fail-loud, no fabricated score).
 
 ## Hard Gates
 
 - Do not start implementation from this skill.
 - Backlog rows and spec files must stay consistent.
 - Peer review gates apply only when explicitly available/requested.
+- The designing agent NEVER self-scores (FIX-343/FIX-344). The design Review Score is produced SOLELY by a fresh-session peer Reviewer via the wrap-up `roll pair score --design` step; no peer available → honest unscored, never a synthesized self-grade.
 - No story decomposition until a detailed design exists and the owner has signed off (proportional to risk). Decomposition slices an agreed design — it is NOT a substitute for designing. If you cannot show at least one complete worked sample of the intended output/behavior, the design is NOT done.
 - **Visual-evidence contract (FIX-311 — design-phase gate)**: every story spec is born honest. By default each story MUST carry one AC that captures its user-visible surface (web/CLI/TUI), and a web/visual card MUST declare the real product surface in its spec frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `.roll/features/index.html#casting`), NEVER the card's own dossier/report page. A card with genuinely no visual surface writes `screenshot_exempt: <reason>` (a naked `true`/`yes` is NOT a valid exemption — it must carry a reason). This is enforced, not advisory: `validateStoryVisualEvidence(specText)` in `packages/cli/src/lib/design-visual-evidence.ts` returns `ok:false` for a non-exempt spec with no visual-evidence AC, or one that declares a visual surface but no `deliverable_url`. Keyword matching may only RECOGNISE an exemption / an existing visual-evidence AC — it may NEVER be used to decide a card needs a screenshot (it always does, by default). This is the same contract the runtime enforce gate (FIX-309) and archive gate (FIX-334) hold; the three must agree.
 

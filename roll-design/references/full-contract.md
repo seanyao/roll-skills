@@ -826,16 +826,51 @@ Each story must be:
 
 ---
 
-## Review Score (FIX-343)
+## Review Score (FIX-343 / FIX-344)
 
 The design session is **not** self-scored. The designing agent **does NOT
-self-score**. A design Review Score — when one is produced — comes SOLELY from
-a Reviewer running in a FRESH, separate session (never a sub-agent of the
-designer's session), the same independence rule as build/fix.
+self-score**. A design Review Score comes SOLELY from a Reviewer running in a
+FRESH, separate session (never a sub-agent of the designer's session), the same
+independence rule as build/fix.
 
-The design-side peer Review Score path is tracked by **FIX-344** (the runner's
-score stage does not yet cover `roll-design`). Until FIX-344 lands, this skill
-emits no quality score; the agent just delivers the split + specs and stops.
+roll-design has **no loop cycle** (no `commitsAhead`/worktree), so the runner's
+`runScorePairing` score stage never fires for it. **FIX-344** closes that gap with
+a skill-orchestrated wrap-up step: at the END of a design session, after the
+INVEST split + specs are written, the designing agent **triggers** an independent
+peer Review Score — it does not score its own work.
+
+### Wrap-up step (mandatory closing action)
+
+For the lead story of the split (or the single story for a one-story design), run:
+
+```
+roll pair score --design <story-id> --file <design-summary.md> [--worker <design-agent>]
+```
+
+- `--design` grades **design quality** (INVEST split, visual-AC completeness,
+  `deliverable_url` correctness, domain/spec consistency) — NOT code; it stamps
+  the score `stage=design` so it is distinguishable in the event stream.
+- A **fresh-session peer Reviewer** (same vendor OK, started in a separate
+  session — never the designer's session or a sub-agent of it) produces the
+  score. The Review Score note records `scoring: pair`, `scored-by:`, and the
+  Reviewer's `session-id:` (so independence is verifiable, not asserted), with
+  `skill: roll-design`.
+- The summary passed to `--file`/`--summary` should be the design output the
+  Reviewer judges: the story split, the AC/visual-evidence declarations, the
+  worked design sample, and the domain notes.
+
+### Fail-loud (no synthesized score)
+
+If **no peer is available** (none installed / all unavailable / timeout / the
+Reviewer breaks the SCORE/VERDICT/RATIONALE protocol), `roll pair score` exits
+**non-zero** and writes **no note** — exactly the FIX-343 fail-loud semantics.
+The design output is then **honestly marked unscored** (no fabricated score);
+the designer reports the missing review and retries once a scorer is available.
+There is **no path** for the designing agent to grade its own output.
+
+The score, once written, surfaces in the story dossier's Review Score block
+(the FIX-343 `reviewScoreBlock` renderer reads the latest note for the story
+regardless of skill — no separate design UI).
 
 ---
 
