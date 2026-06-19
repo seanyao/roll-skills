@@ -127,15 +127,27 @@ the `hard`-tier boundary: a FIX estimated past it is a sanity signal that the
 Emit `verdict: ok` or `verdict: too_big` (with `reason:`) as the first cycle output line.
 
 - `ok` → continue with step 1 below normally
-- `too_big` → self-downgrade per US-AGENT-008, **gated by US-AGENT-009 cap check**:
+- `too_big` → **self-downgrade** rather than TCR a half fix:
 
-> **v3 note (FIX-364)**: the retired bash helpers `_loop_chain_depth_cap_check`, `_loop_split_cap_hit`, and `_loop_self_downgrade` were removed with the v2 bash engine. v3 `roll` is a TS binary and cannot be sourced. The equivalent surface is being rebuilt in **US-AGENT-042** as `roll loop self-downgrade <story> <reason> <sub-ids>`; until that lands, if a fix is genuinely too big for one cycle, raise an ALERT and exit cleanly without TCR commits.
+  1. Invoke `roll-design --from-story FIX-XXX` to mint ≥2 smaller sub-stories.
+     Each inherits the original FIX's inbound dependencies — never the FIX itself
+     (the parked parent would deadlock its children).
+  2. Hand the split to the loop:
 
-If split is possible, invoke `roll-design --from-story FIX-XXX-NNN` to mint
-sub-stories, then flip the original FIX to 🚫 Hold with a `→ split to ...`
-annotation; sub-stories carry `chain_depth + 1`. If the split cap is hit or
-`roll-design` cannot produce ≥2 sub-stories, write an ALERT for human triage.
-Do NOT TCR a half fix.
+     ```bash
+     roll loop self-downgrade FIX-XXX "<one-line reason>" <subA,subB,...>
+     ```
+
+     It parks the FIX at 🚫 Hold, appends the sub-stories as 📋 Todo rows (correct
+     `depends-on`, `chain_depth + 1`, never the parent), closes any open PR for
+     the FIX and deletes its branch (invariant I3), and records a `story:split`
+     event.
+  3. Exit cleanly — **no TCR commits this cycle**.
+
+The command enforces the chain-depth cap (US-AGENT-009): a FIX whose chain has
+already auto-split twice, or one that yields fewer than 2 sub-stories, is parked
+at 🚫 Hold with an ALERT for human triage (a `story:split` with `capped: true`)
+rather than recursing. Do NOT TCR a half fix.
 
 Bug fixes are usually small (est_min ≤ 5), so pre-flight is mostly a sanity barrier for FIXes whose underlying issue turns out structural — e.g. a "simple null check" that requires touching 12 files. Catching that upfront is cheaper than burning a cycle.
 

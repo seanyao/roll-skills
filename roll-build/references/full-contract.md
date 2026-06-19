@@ -84,21 +84,31 @@ reason: <one short line — which condition triggered, with numbers>
 ```
 
 When `verdict: ok` → continue to Step A2 normally.
-When `verdict: too_big` → go to **US-AGENT-008 self-downgrade path**, **but** first run the **US-AGENT-009 chain_depth cap check**:
+When `verdict: too_big` → **self-downgrade** rather than burn the cycle on a guaranteed miss:
 
-> **v3 note (FIX-364)**: the retired bash helpers `_loop_chain_depth_cap_check`, `_loop_split_cap_hit`, and `_loop_self_downgrade` were removed with the v2 bash engine. v3 `roll` is a TS binary and cannot be sourced. The equivalent self-downgrade surface is being rebuilt in **US-AGENT-042** as `roll loop self-downgrade <story> <reason> <sub-ids>`; until that lands, the skill should **not** invoke the dead bash helpers above. If a story is genuinely too big for a single cycle, raise an ALERT and exit cleanly without TCR commits.
+1. Invoke `roll-design` to re-split the story into ≥2 smaller sub-stories. Each
+   sub-story inherits the parent's ORIGINAL inbound dependencies — **never** the
+   parent itself (depending on the about-to-be-parked parent would deadlock the
+   child forever).
+2. Hand the split to the loop with the v3 command:
 
-1. Invoke `roll-design` to re-split the story into smaller sub-stories.
-   Each sub-story carries `chain_depth = (parent.chain_depth + 1)`.
-   Sub-stories land as 📋 Todo with `depends-on:<parent>` chained.
-2. After the sub-stories are written to BACKLOG, flip the parent to 🚫 Hold
-   and emit the downgrade event.
-3. Exit cleanly — no TCR commits this cycle. The next loop cycle picks up
-   the first sub-story (which is smaller and should pass pre-flight).
+   ```bash
+   roll loop self-downgrade <story-id> "<one-line reason>" <subA,subB,...>
+   ```
 
-If `roll-design` cannot produce ≥2 sub-stories (story is already irreducible),
-treat it as a cap-hit: hold the parent, write an ALERT for human triage, and
-exit cleanly. The cap exists purely to stop infinite split chains.
+   It parks the parent at 🚫 Hold (a grouping row the picker skips), appends the
+   sub-stories as 📋 Todo rows (correct `depends-on`, `chain_depth = parent + 1`,
+   never pointing at the parent), closes any open PR for the parent and deletes
+   its branch (invariant I3), and records a `story:split` event for reconciliation.
+3. Exit cleanly — **no TCR commits this cycle**. The next loop cycle picks up the
+   first sub-story (smaller, should pass pre-flight).
+
+The command enforces the **chain-depth cap** (US-AGENT-009): a story whose chain
+has already auto-split twice (`chain_depth ≥ 2`), or one that yields fewer than 2
+sub-stories (irreducible), is **not** split again — `roll loop self-downgrade`
+parks the parent at 🚫 Hold and raises an ALERT for human triage (a `story:split`
+with `capped: true`) instead of recursing. Pass the sub-ids you have (or none);
+the command decides. The cap exists purely to stop infinite split chains.
 
 > Pre-flight is honest, not paranoid: a small story (est_min ≤ 8 — the `easy` tier — with chain_depth=0) should almost always go `ok`. The check pays off on the long tail — stories with a large `est_min` that, on inspection, plainly compose far more files and behaviours than one cycle can land green.
 
