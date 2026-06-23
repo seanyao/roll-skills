@@ -78,8 +78,6 @@ ls -la ~/.claude/skills/roll-*
 # Antigravity (agy — reuses ~/.gemini/, if exists)
 ls -la ~/.gemini/skills/roll-* 2>/dev/null
 
-# Trae (if exists)
-ls -la ~/.trae/skills/roll-* 2>/dev/null
 ```
 
 Check:

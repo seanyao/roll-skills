@@ -141,7 +141,7 @@ Present these in chat. **Aim for total time ≤ 3 minutes.** Group 1 confirms yo
 **Group 3 — Privacy & next steps**
 
 7. Add `.roll/` to `.gitignore`? (yes = keep project management private; no = commit it like Roll itself does)
-8. Sync Roll conventions to which AI tools? Multi-select from detected agents (claude / cursor / codex / kimi / deepseek / pi / opencode / agy / trae)
+8. Sync Roll conventions to which AI tools? Multi-select from detected agents (claude / kimi / codex / pi / agy / reasonix)
 9. Enable `roll loop` autonomous execution after init?
 
 ### Step 4 — Write plan file
@@ -169,13 +169,13 @@ include_existing:
 privacy:
   gitignore_dot_roll: true                   # user's Q7
 
-sync_targets: [claude, cursor]               # user's Q8
+sync_targets: [claude, pi]                   # user's Q8
 enable_loop: false                            # user's Q9
 agent_routes_template: default                # user's Q10 — agent routing preset
                                               # one of: default / minimal / heavy / skip
-                                              # default = pi/deepseek/claude + history (US-AGENT-002)
+                                              # default = pi/claude + history (US-AGENT-002)
                                               # minimal = single agent (pi), no history
-                                              # heavy   = pi/deepseek/claude/kimi + larger window
+                                              # heavy   = pi/claude/kimi + larger window
                                               # skip    = don't seed .roll/agent-routes.yaml
 
 # ── US-ONBOARD-016: Phase 2 analysis sections (optional, but emit all three) ──

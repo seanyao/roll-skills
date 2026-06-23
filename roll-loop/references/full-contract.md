@@ -66,7 +66,7 @@ denied operations and the cycle will idle-exit.
 ```yaml
 # ~/.roll/config.yaml
 loop:
-  primary_agent: claude          # claude | deepseek | kimi | pi | ...
+  primary_agent: claude          # claude | kimi | pi | codex | ...
   max_items_per_run: 1           # one story per cycle — atomic delivery, predictable cycle time
   brief_on_feature_complete: true
   retry_backoff: [2, 4, 8, 16]  # seconds, exponential
