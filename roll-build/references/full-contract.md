@@ -180,6 +180,43 @@ When parallel conditions are not met, execute Actions sequentially.
 - What "online verification" means for this repo (URL, endpoint, UI flow, log signal)
 - Reference `$roll-.qa` for test pyramid (unit → E2E → visual → smoke)
 
+#### A4.1 Testability routing (objective 4-stage vs subjective 3-stage)
+
+Before defining the verification, classify **each Action** on one axis:
+
+> **Can this Action's acceptance be expressed as deterministic pass/fail tests?**
+
+```
+Action acceptance
+  ├── YES (deterministic) → objective 4-stage loop  ← DEFAULT
+  │      Planner (AC/contract) → Tester (Phase 2 + write RED)
+  │      → Builder (Phase 3 TCR) → Evaluator (Phase 6, incl. Agent 4 test audit)
+  │
+  └── NO (judgment-dependent) → subjective 3-stage loop
+         Planner emits EXPLICIT evaluation criteria up front
+         → Builder produces the output
+         → an ISOLATED Evaluator scores the output against those criteria
+```
+
+Most code Actions are objective — the test IS the contract; stay on the default
+path. Route to the 3-stage loop only for the genuinely judgment-dependent slices
+that still ride inside a delivery: output-copy wording, layout / visual polish,
+docs readability, recommendation quality. For those:
+
+- **Write the criteria before building** — the same discipline as a test, but in
+  prose: a short checklist of what "good" means for this Action (e.g. the Phase 11
+  design-QA checklist is exactly such a criteria set for a visual surface).
+- **Do not fake a test** to force the work onto the TCR path, and **do not let the
+  building agent grade its own output** — that is the self-score red line (FIX-343).
+- **An isolated Evaluator scores against the criteria** — a fresh session or
+  `$roll-peer` (which already enforces the Independent Judgment Rule: the evaluator
+  is not seeded with the builder's reasoning). Its verdict feeds the same
+  fix-and-recheck loop as a failing test.
+
+A single Story usually mixes both: the logic is objective (4-stage), while a copy
+or readability slice inside it is subjective (3-stage). Classify per Action, not
+per Story.
+
 Proceed to the **Shared TCR Workflow** (Phase 1 onward).
 
 ---
@@ -296,6 +333,12 @@ Before writing implementation code:
 Reference `$roll-.qa` for coverage requirements and test pyramid strategy.
 
 **Why this phase**: TCR only guarantees code passes tests — verify tests are correct first.
+
+> This self-review is necessary but **not** sufficient: the same agent that
+> wrote the tests judging its own tests is not isolation. It catches obvious
+> gaps now; the *independent* adequacy audit (no implementation, no builder
+> reasoning) happens at **Phase 6 Agent 4 — Test Adequacy Review**. Treat this
+> step as "don't ship obviously-wrong tests," not as the final word on coverage.
 
 ### Phase 3: TCR Implementation Loop
 
@@ -477,27 +520,53 @@ across files, copy-paste patterns, cross-file N+1, etc.).
 git diff main...HEAD
 ```
 
-**Launch three review agents in parallel** (each receives the full diff):
+**Launch four review agents in parallel:**
 
 ```
-Agent 1: Reuse Review
+Agent 1: Reuse Review                 (receives: full diff)
   → Search for existing utilities / helpers the new code could use instead
   → Flag any new function that duplicates existing functionality
   → Flag inline logic replaceable by existing tools
 
-Agent 2: Quality Review
+Agent 2: Quality Review               (receives: full diff)
   → Redundant state, Parameter sprawl, Copy-paste near-duplicate,
      Leaky abstraction, Stringly-typed, JSX nesting,
      Nested conditionals ≥3 deep, Unnecessary comments
 
-Agent 3: Efficiency Review
+Agent 3: Efficiency Review            (receives: full diff)
   → Redundant computation / N+1, Missed concurrency,
      Hot-path bloat, Loop no-op updates, TOCTOU existence pre-check,
      Memory leaks, Overly broad operations
+
+Agent 4: Test Adequacy Review         (receives: AC/contract + test files ONLY)
+  → Audit the TESTS, not the implementation. This agent does NOT receive
+     the implementation diff or any builder reasoning — only (a) the Story's
+     AC / interface contract (the Planner artifact) and (b) the test files.
+  → AC ↔ assertion coverage: every AC has at least one test that would fail
+     if that AC regressed. Flag any AC with no corresponding assertion.
+  → Tautological / vacuous assertions: tests that only assert "did not throw",
+     re-assert the mock, or compare a value to itself — green but proves nothing.
+  → Tests loosened to pass: an assertion weakened (widened matcher, deleted
+     case, `.skip`, snapshot blindly updated) so a thin implementation goes green.
+  → Missing edge / failure cases the AC names (boundaries, invalid input,
+     concurrency, error paths) that have no test.
 ```
 
-Wait for all three agents to complete. Aggregate findings → fix each issue
-(false positives: note and skip, no debate) → summarize what was fixed.
+**Why Agent 4 is isolated (the test-gated-loop insight)**: in the TCR loop the
+implementation is *already* constrained by the tests — a thin or wrong
+implementation cannot stay green. The weakest link is therefore the **tests
+themselves**, and Phase 2's test-design review is a *self*-review by the same
+agent that wrote them (no isolation). Agent 4 closes that gap: a fresh,
+context-isolated reviewer that sees only the contract and the tests audits
+whether the tests actually pin the behavior the AC promises. Seeding it with the
+implementation diff or the builder's reasoning would collapse the independence
+(same red line as the FIX-343 Review Score and roll-peer's Independent Judgment
+Rule) — so it is deliberately withheld.
+
+Wait for all four agents to complete. Aggregate findings → fix each issue
+(false positives: note and skip, no debate) → summarize what was fixed. A
+genuine test-adequacy gap (uncovered AC, vacuous assertion) is fixed by a new
+TCR cycle that adds the missing test FIRST (RED), never by relaxing the audit.
 
 **Fallback**: If parallel agent invocation fails, run `$roll-.review staged` on
 the full diff as a single-pass fallback — do not skip review entirely.

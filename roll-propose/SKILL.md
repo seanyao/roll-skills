@@ -125,6 +125,12 @@ To reject:  annotate with "Rejected: {reason}" to suppress future re-proposals.
 - Never write directly to .roll/backlog.md — .roll/proposals.md is the staging area.
 - If a similar proposal already exists in .roll/proposals.md (pending or rejected), note similarity and skip or merge rather than creating a duplicate.
 - Aim for 2 proposals by default; generate 1 if context is thin, 3 if focus hint suggests a rich area.
+- **3-stage discipline**: a proposal is a subjective deliverable, so the drafting
+  session must NOT also approve it. The owner moving an entry into .roll/backlog.md
+  IS the isolated Evaluator (the human is the fresh, unbiased session the 3-stage
+  loop requires). The proposal's **Acceptance Criteria (draft)** are the explicit
+  criteria that approval is graded against — keep them concrete and checkable so
+  the decision is against stated criteria, not a vibe; never self-promote a draft.
 
 ## .roll/proposals.md Format
 

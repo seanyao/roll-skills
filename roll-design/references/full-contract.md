@@ -837,6 +837,29 @@ The design-side peer Review Score path is tracked by **FIX-344** (the runner's
 score stage does not yet cover `roll-design`). Until FIX-344 lands, this skill
 emits no quality score; the agent just delivers the split + specs and stops.
 
+### The 3-stage shape (subjective deliverable)
+
+A design has **no executable pass/fail test** — correctness is judgment. So it is
+the canonical **3-stage loop**, and naming the stages keeps the roles honest:
+
+- **Planner / Builder = this design session.** Besides the split + specs, it must
+  emit **explicit evaluation criteria for the design itself** — the prose
+  equivalent of a test contract: what would make this design wrong or incomplete
+  (e.g. "every Bounded Context boundary is justified", "the worked sample covers
+  the hardest edge case", "no story depends on a parked parent", "each
+  user-facing story carries a visual-evidence AC"). Write these down so the
+  Evaluator has something concrete to check against rather than a vibe.
+- **Evaluator = an ISOLATED reviewer.** It receives the design artifact + the
+  criteria, and **must not be seeded with the designer's reasoning** (roll-peer's
+  Independent Judgment Rule already enforces exactly this — see the two
+  `[peer]` checkpoints in the Workflow: Direction Review and Plan Review). A
+  fresh same-vendor session is the minimum; a different agent+model is encouraged.
+
+Until the runner's FIX-344 stage lands, the isolated Evaluator is the
+`$roll-peer` Plan Review checkpoint, not an automated score — but the criteria
+above are what it should grade against either way. Emitting the criteria now is
+cheap and makes the future automated Evaluator a drop-in.
+
 ---
 
 ## Integration
