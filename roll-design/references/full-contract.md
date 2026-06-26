@@ -721,6 +721,20 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 - [ ] {measurable criteria 3}
 - [ ] {visual-evidence AC — REQUIRED by default: a captured screenshot of this story's user-visible surface (web/CLI/TUI). For a web/visual card this is "screenshot of <the deliverable page> is captured", paired with the `deliverable_url:` frontmatter below. Omit this AC ONLY when the card is `screenshot_exempt:` (see frontmatter).}
 
+**Evaluation contract:**
+- expected_evidence:
+  - kind: test | command | screenshot | document | diff | ci | manual
+    target: {file/command/surface/report expected to prove an AC}
+    proves: {AC id or short AC phrase this evidence proves}
+- scorer_focus:
+  - {what the peer Review Score should judge beyond generic code quality}
+- builder_notes:
+  - {bounded implementation/evidence hints; no hidden requirements}
+
+> **强制规则 — Evaluation contract 必须填**：每张新 story 必须带 `**Evaluation contract:**` 块（expected_evidence + scorer_focus）。这是 planner 写给 builder 和 evaluator 的验收契约——builder 编码前读 contract、交付后把 ac-map 项映射回 contract 的 expected_evidence；evaluator（peer score / attest gate）读 contract 对账。不是固定三 agent 协同模型，是 artifact-based 契约。真正 trivial/internal 故事可放一项 minimal block，但不许省略。
+>
+> **MUST fill** the `**Evaluation contract:**` block on every newly split story. This is an artifact contract authored by roll-design, consumed by builder (read before coding, map delivered evidence back) and evaluator (peer score prompt includes it, attest surfaces planned-vs-delivered). Genuinely trivial/internal stories may use a one-item minimal block, never omit it.
+
 **Spec frontmatter (visual-evidence contract — FIX-311):**
 - A web/visual card MUST declare the real product surface it delivers:
   ```yaml
