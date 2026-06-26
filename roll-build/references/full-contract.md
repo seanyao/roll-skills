@@ -117,6 +117,7 @@ the command decides. The cap exists purely to stop infinite split chains.
 1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<epic>/<story>/spec.md`
 2. Read the full AC / Files / Dependencies section
 3. If a plan doc (`<feature>-plan.md`) exists, read it for context
+4. **Read the Evaluation contract (US-SKILL-030)**: if the spec contains an `**Evaluation contract:**` block, read `expected_evidence` and `scorer_focus` before writing any code. Map each `expected_evidence` item to a planned Action or test; if an item is impossible given the actual scope, note the deviation in your report/ac-map. `builder_notes` carry planner hints — treat them as bounded guidance, not hidden requirements.
 
 ### Step A3: Split into Actions
 

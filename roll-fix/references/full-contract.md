@@ -20,9 +20,10 @@ Use when:
 
 **Workflow:**
 1. Read .roll/backlog.md index → Find FIX/BUG row → Follow link to `.roll/features/<epic>/<story>/spec.md`
-2. Single Action (no splitting)
-3. Execute via TCR workflow
-4. Write back: update .roll/backlog.md status column + update FIX section in Feature file
+2. **If the spec contains an `**Evaluation contract:**` block (US-SKILL-030)**, read `expected_evidence` and `scorer_focus` before writing code. Map each evidence item to a planned change; note any deviation in your ac-map if an item turns out to be N/A for a fix.
+3. Single Action (no splitting)
+4. Execute via TCR workflow
+5. Write back: update .roll/backlog.md status column + update FIX section in Feature file
 
 Do not use for:
 

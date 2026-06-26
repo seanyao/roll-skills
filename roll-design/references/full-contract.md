@@ -757,6 +757,25 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 >
 > **MUST fill** the `**Agent profile:**` block on every newly split US. `est_min` is the **sole loop-routing input** — `lib/loop_pick_agent.py` maps it onto a four-slot complexity tier (easy/default/hard/fallback) on the est_min axis alone (missing/illegal → default). Fill `risk_zone` too, but note it does NOT feed routing; it only informs the roll-build / roll-fix pre-flight self-eval (US-AGENT-007).
 
+> **强制规则 — Evaluation contract 必须填（US-SKILL-030）**：每张新 story spec 都必须包含 `**Evaluation contract:**` 块，明确列出 `expected_evidence`（每项 kind/target/proves 三字段）和 `scorer_focus`（peer scorer 评分口径）。纯内部/无可见面的 trivial story 可使用 one-item 最小块，但不可省略。该块由 planner（`roll-design`）撰写，供 builder 和 evaluator 作为共享证据契约消费，不触发三 agent 协同会话。
+
+> **Evaluation contract is required (US-SKILL-030)**: every newly split story spec MUST carry an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus` (scorer rubric). Genuinely trivial/internal stories may use a one-item minimal block but must not omit the section entirely. This block is authored by the planner (`roll-design`) and consumed as a shared artifact contract by builder (`roll-build`/`roll-fix`) and evaluator (peer scorer, attest gate) — no three-agent chat pipeline is introduced.
+>
+> **Block template:**
+> ```markdown
+> **Evaluation contract:**
+> - expected_evidence:
+>   - kind: test | command | screenshot | document | diff | ci | manual
+>     target: <file/command/surface/report that proves an AC>
+>     proves: <AC id or short AC phrase>
+> - scorer_focus:
+>   - <what the peer Review Score should judge beyond generic code quality>
+> - builder_notes:
+>   - <bounded implementation/evidence hints; no hidden requirements>
+> ```
+>
+> **Rules**: (1) `expected_evidence` items are **binding for evidence expectations** — if an item becomes impossible, the builder updates the spec or explains the deviation in the report/ac-map. (2) `scorer_focus` items extend, not replace, the generic scoring rubric. (3) This block complements the visual-evidence contract; `deliverable_url`/`screenshot_exempt` rules are unchanged. (4) Legacy specs without the block degrade gracefully — builder and scorer fall back to the generic rubric with no behavior change.
+
 ### Closing Doc-Refresh Story Template — Phase N.M 收尾文档
 
 When any preceding US in the batch changes user-visible behavior, append this template story at the end of the batch. Wire it as `depends-on:` against every preceding user-facing US so it runs last.
