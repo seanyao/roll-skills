@@ -39,7 +39,7 @@ You must not create, edit, delete, move, or shell-mutate any other project file.
 | Ask the user nine focused onboarding questions | Write `.gitignore` |
 | Write `.roll/init-diagnosis.yaml` | Write `.roll/backlog.md` |
 | Write `.roll/onboard-plan.yaml` | Write docs or feature specs |
-| Stop and tell the user to run `roll init --apply` | Run `roll init --apply` |
+| Stop and tell the user to review and apply the plan | Run `roll init --apply` |
 
 Hard constraint: the plan may describe CLI-owned merge intents, but any source, `AGENTS.md`, `.gitignore`, backlog, docs, features, or offboard mutation is the responsibility of `roll init --apply`, not the agent.
 
@@ -264,9 +264,14 @@ Tell the user:
 
 > Onboard conversation done. Diagnosis saved to `.roll/init-diagnosis.yaml`.
 > Plan saved to `.roll/onboard-plan.yaml`.
+> Review `.roll/init-diagnosis.yaml` and `.roll/onboard-plan.yaml` before applying.
 > Return to your terminal and run:
 >
 >     roll init --apply
+>
+> In non-interactive automation after review, use:
+>
+>     roll init --apply --auto
 >
 > The plan expires in 24 hours.
 
