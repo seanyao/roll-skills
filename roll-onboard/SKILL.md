@@ -273,6 +273,10 @@ Tell the user:
 >
 >     roll init --apply --auto
 >
+> After apply, continue with:
+>
+>     roll next
+>
 > The plan expires in 24 hours.
 
 Do not run `roll init --apply` yourself.
