@@ -45,3 +45,7 @@ Load when the user explicitly asks for peer review, cross-agent negotiation, /pe
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Role in v4 execution profiles
+
+Cross-agent peer review is an **Evaluator capability**: an independent fresh-session reviewer (never the Builder's session) scores the delivery. The Evaluator's judgment is binding for story satisfaction; peer negotiation is the mechanism. In `verified`/`planned` profiles this feeds the `eval-report.md`. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)

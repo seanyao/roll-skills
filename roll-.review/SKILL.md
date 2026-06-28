@@ -146,3 +146,7 @@ In each micro-step of `$roll-build`:
 - **Check Phase**: Local quality control
 - **Micro-steps**: Small fast steps, each review < 100 lines
 - **TCR**: Can only commit after passing self-check, ensuring repo quality
+
+## Role in v4 execution profiles
+
+Self-review is a TCR-step quality gate **within the Builder role** — it is NOT story acceptance. In the `verified`/`planned` execution profiles the independent **Evaluator** (a fresh session, never the Builder's) judges whether the delivery satisfies the contract; blocking review, score, and attest stay three SEPARATE dimensions (never one pass/fail). This skill is one Evaluator capability among review/qa/scoring. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)
