@@ -701,7 +701,7 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
    screenshot captures the card's **declared** deliverable, taken from the
    story's frontmatter key `deliverable_url` (alias `screenshot_url`). It may be
    a URL, a local file, or carry a `#fragment` to deep-link a specific tab/view
-   (e.g. `.roll/features/index.html#casting`). The loop captures it with
+   (e.g. `https://app.example.test/casting#board`). The loop captures it with
    **headless Playwright** — no GUI browser window pops up, and a missing
    Chromium self-heals via an auto-install on first use. The red line: **never**
    screenshot roll's own attest report / dossier page and pass it off as the

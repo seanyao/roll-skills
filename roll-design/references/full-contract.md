@@ -739,7 +739,7 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 - A web/visual card MUST declare the real product surface it delivers:
   ```yaml
   ---
-  deliverable_url: .roll/features/index.html#casting   # alias: screenshot_url. The actual deliverable page, NEVER the card's own dossier/report page.
+  deliverable_url: https://app.example.test/casting#board   # alias: screenshot_url. The actual deliverable page, NEVER the card's own dossier/report/archive page.
   ---
   ```
 - **Pin down the deliverable surface — locate it, don't guess** (`deliverable_url` MUST be the EXACT page + anchor the story lands on):
