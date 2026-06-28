@@ -1,238 +1,288 @@
 ---
 name: roll-onboard
 license: MIT
-description: "Load when bringing a legacy project into Roll through interactive discovery questions and generation of .roll/onboard-plan.yaml for roll init --apply."
+description: "Load when bringing an existing codebase without Roll markers into Roll through read-only diagnosis and structured .roll/init-diagnosis.yaml + .roll/onboard-plan.yaml artifacts."
 ---
 # Roll Onboard
 
 ## Gotchas
 
-- Onboard gathers a contract for roll init --apply; it should not mutate the project before the plan is reviewed.
+- This skill is for an **existing codebase without Roll**, not an empty project, PRD-only project, already-onboarded Roll project, or pre-v2 Roll layout.
+- The agent is the cognition layer. It may diagnose, ask questions, and write structured artifacts only.
 - Respect privacy/scope answers from the interactive questions as hard constraints.
 
 > Follows the Architecture Constraints, Development Discipline, and Engineering Common Sense defined in the project AGENTS.md.
 
-Interactive onboarding flow for **legacy projects**: existing code that needs to adopt the Roll convention without disrupting how the team already works.
-
 ## Trigger
 
-This skill runs when:
+Use this skill when:
 
-- `roll init` detected a legacy project (≥10 source files, no `AGENTS.md`)
-- The CLI told the user to open an AI agent and run `$roll-onboard`
-- The user has now invoked you here
+- `roll init` detected an existing codebase without Roll and printed `Next: $roll-onboard`.
+- The CLI told the user that `$roll-onboard` requires an AI agent.
+- The user invokes `$roll-onboard` from the existing codebase root.
 
-## Hard responsibility boundary
+Do not use this skill for PRD-only workspaces. Those are new projects and should go through `$roll-design` / fresh init.
 
-You are the **认知 (cognition) layer**. Your job ends with writing a plan file.
+## Hard Responsibility Boundary
+
+You may write exactly these two files:
+
+1. `.roll/init-diagnosis.yaml`
+2. `.roll/onboard-plan.yaml`
+
+You must not create, edit, delete, move, or shell-mutate any other project file.
 
 | You do | You do NOT |
 |--------|------------|
-| Read project code, infer type/domains/modules | Modify any source file |
-| Call `roll-doc-audit --dry-run` to get a gap report | Call `roll-doc-audit` (write mode) |
-| Ask the user 9 questions across 3 groups | Decide for the user |
-| Produce `.roll/onboard-plan.yaml` | Write `.gitignore` |
-| Produce `.roll/onboard-plan.yaml` | Run `roll init --apply` |
+| Read project code, manifests, docs, and tests | Modify source files |
+| Run read-only probes and `roll-doc-audit --dry-run` | Write `AGENTS.md` |
+| Ask the user nine focused onboarding questions | Write `.gitignore` |
+| Write `.roll/init-diagnosis.yaml` | Write `.roll/backlog.md` |
+| Write `.roll/onboard-plan.yaml` | Write docs or feature specs |
+| Stop and tell the user to review and apply the plan | Run `roll init --apply` |
 
-Hard constraint: **AI cannot create files in the user's project other than `.roll/onboard-plan.yaml`.** Anything else is `bash`'s job (`roll init --apply`).
+Hard constraint: the plan may describe CLI-owned merge intents, but any source, `AGENTS.md`, `.gitignore`, backlog, docs, features, or offboard mutation is the responsibility of `roll init --apply`, not the agent.
 
-## Inputs you must read
+## Inputs You Must Read
 
-1. The repository tree (use the project's own structure to infer technologies)
-2. Any existing `README.md` / `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` etc. as evidence
-3. `roll-doc-audit --dry-run` output → identifies what documentation gaps exist
-4. The path-audit pattern: scan for legacy structure markers (`BACKLOG.md`, `docs/features/`, etc.) — if any are present, REFUSE and tell the user to run `npx @seanyao/roll@2 migrate` first
+1. Run `roll init` first and record the non-mutating diagnosis, especially `facts hash: sha256:...`.
+2. The repository tree, manifests, source roots, test roots, and existing docs.
+3. Any existing `README.md` / `package.json` / `pyproject.toml` / `Cargo.toml` / `go.mod` etc. as evidence.
+4. `roll-doc-audit --dry-run` output to identify documentation gaps without writing.
+5. The pre-v2 Roll marker scan: `BACKLOG.md`, `PROPOSALS.md`, `docs/features/`, `docs/briefs/`, `docs/dream/`.
+
+If pre-v2 Roll markers are present, stop and tell the user to run:
+
+```sh
+npx @seanyao/roll@2 migrate --dry-run
+```
 
 ## Workflow
 
-### Step 0 — Pre-flight
+### Step 0 - Pre-flight
 
-1. Check that you're in a legacy project root (no `AGENTS.md`, has source code)
-2. If `BACKLOG.md` or `docs/features/` already present → STOP, tell user to run `npx @seanyao/roll@2 migrate` first (this is a partial-migration project, not legacy)
-3. Check `.roll/onboard-plan.yaml` doesn't already exist; if it does, ask user whether to overwrite
+1. Confirm the current directory is an existing codebase root with source/manifests and no current Roll markers (`.roll/`, `.roll/backlog.md`, `.roll/features/`, `AGENTS.md`).
+2. Confirm no pre-v2 Roll markers are present. If they are present, stop and route to the v2 migration command above.
+3. Check whether `.roll/init-diagnosis.yaml` or `.roll/onboard-plan.yaml` already exists. If either exists, ask the user before overwriting it.
 
-### Step 1 — Read code, build understanding
+### Step 1 - Read Code And Build Understanding
 
 Walk the repo. Identify:
-- **type**: one of `backend-service` / `frontend-only` / `fullstack` / `cli`
-- **description**: 1-2 sentence summary of what this project does
-- **domains**: top business/technical domains (e.g., "auth", "billing", "search")
-- **key_modules**: top 3-5 modules that hold most of the logic
 
-### Step 1b — Phase 2 analysis: business model, tech, tests (US-ONBOARD-016)
+- `type`: one of `backend-service` / `frontend-only` / `fullstack` / `cli`
+- `description`: 1-2 sentence summary of what this project does
+- `domains`: top business/technical domains
+- `key_modules`: top 3-5 modules that hold most of the logic
 
-A single onboard now produces three structured analysis sections in the plan
-(`domain_model`, `tech_analysis`, `test_assessment`). Build them here so Step 4
-can serialise them.
+### Step 1b - Business Model, Tech, Tests
 
-**`domain_model`** — from the code you read, identify the bounded contexts. For
-each: a `name`, its `aggregates` (the entities that own consistency), and its
-`ubiquitous_language` (the domain terms the code/docs actually use). If you
-genuinely cannot infer contexts from the code, emit an empty
-`bounded_contexts: []` — do NOT invent contexts that aren't in the code.
+A normal onboard produces three structured plan sections: `domain_model`, `tech_analysis`, and `test_assessment`.
 
-**`tech_analysis`** — `stack` (languages/frameworks evidenced by manifests),
-`dependencies` (from `package.json` / `pyproject.toml` / `go.mod` / `Cargo.toml`
-etc.), `architecture_notes` (observed structure, not aspirational), and `risks`
-(each a mapping with a `description`; optionally `severity: LOW|MEDIUM|HIGH` and
-an `evidence: detected|inferred` tag).
+`domain_model`:
 
-**`test_assessment`** — this section is under a **hard anti-hallucination
-constraint** (next sub-step). Do NOT write it from intuition.
+- Identify bounded contexts from code and docs.
+- For each context, emit `name`, `aggregates`, and `ubiquitous_language`.
+- If contexts cannot be inferred, emit `bounded_contexts: []`. Do not invent contexts.
 
-#### The verifiable test scan (ANTI-HALLUCINATION HARD CONSTRAINT)
+`tech_analysis`:
 
-Every `test_assessment` claim must be backed by a real filesystem scan you run
-here — never by "what a project like this usually needs". Run these probes and
-record the raw counts/paths:
+- `stack`: languages/frameworks evidenced by manifests.
+- `dependencies`: dependencies from manifests.
+- `architecture_notes`: observed structure, not aspirational design.
+- `risks`: mappings with `description`; optional `severity: LOW|MEDIUM|HIGH`; optional `evidence: detected|inferred`.
 
-1. **Count test files** by the conventional patterns:
-   - `*.test.*` / `*.spec.*` (JS/TS), `*_test.go` (Go), `test_*.py` / `*_test.py` (Python), `*_spec.rb` (Ruby), `*Test.java` (Java)
-   - e.g. `git ls-files | grep -cE '\.(test|spec)\.[jt]sx?$'` and similar per pattern
-2. **Probe for runner configs**: `jest.config.*`, `pytest.ini` (or `[tool.pytest]` in `pyproject.toml`), `.mocharc.*`, `vitest.config.*`, `karma.conf.*`, `phpunit.xml`, `go test` (implied by `*_test.go`)
-3. **Probe for a `coverage/` directory** (and `.coverage` / `coverage.xml` artifacts)
+`test_assessment` must be backed by a real filesystem scan:
 
-Then turn the raw findings into claims, each a **mapping** carrying a `claim`
-string plus an `evidence` tag:
+1. Count test files by conventional patterns:
+   - `*.test.*` / `*.spec.*`
+   - `*_test.go`
+   - `test_*.py` / `*_test.py`
+   - `*_spec.rb`
+   - `*Test.java`
+2. Probe for runner configs:
+   - `jest.config.*`, `vitest.config.*`, `.mocharc.*`, `pytest.ini`, `[tool.pytest]` in `pyproject.toml`, `karma.conf.*`, `phpunit.xml`
+   - `go test` is implied by `*_test.go`
+3. Probe for coverage artifacts:
+   - `coverage/`, `.coverage`, `coverage.xml`
 
-- `evidence: detected` — the scan directly found it (e.g. "42 `*.test.ts` files detected", "vitest.config.ts present", "coverage/ directory present").
-- `evidence: inferred` — a judgement you derived FROM the detected facts (e.g. "unit layer present but no E2E config — integration coverage likely thin"). The inference must trace back to something the scan detected.
+Every `test_assessment` claim must be a mapping with an evidence tag:
 
-**"none detected" rule**: when a probe finds nothing, you MUST say so explicitly
-with a tagged claim — `{claim: "none detected", evidence: detected}` (a scan that
-ran and returned zero is a genuine `detected` finding). You must NOT silently
-omit the dimension, and you must NOT invent generic filler like "needs more E2E
-tests" / "consider adding integration tests" with no detected basis. The plan
-validator (`lib/roll-plan-validate.py`) rejects any untagged free-text claim, so
-filler will fail `roll init --apply`.
+```yaml
+claim: "42 *.test.ts files detected"
+evidence: detected
+```
 
-Map the findings into the three buckets:
-- `current_layers`: what test layers actually exist (each tagged `detected`)
-- `gaps`: dimensions where the scan found nothing (`none detected`, tagged `detected`) or thin coverage you can justify (`inferred`)
-- `recommended_actions`: actions that trace to a detected gap (tag `inferred`); if nothing is missing, this bucket may be `[]`
+Use `evidence: detected` for direct scan results, including `claim: "none detected"` when a scan returns zero. Use `evidence: inferred` only for judgement derived from detected facts.
 
-### Step 2 — Get gap report
+### Step 2 - Get Gap Report
 
-Run `roll-doc-audit --dry-run` (READ-ONLY mode). This reports:
-- Which standard Roll artifacts (BACKLOG, features, domain models) are missing
-- Which existing docs Roll could `include` rather than regenerate
+Run:
 
-### Step 3 — Three groups of nine questions
+```sh
+roll-doc-audit --dry-run
+```
 
-Present these in chat. **Aim for total time ≤ 3 minutes.** Group 1 confirms your understanding; group 2 scopes the work; group 3 handles privacy and next steps.
+Use it as read-only input. Do not run write mode.
 
-**$(msg onboard.questions_group1)**
+### Step 3 - Ask Nine Questions
 
-1. $(msg onboard.q1 "[type]" "[description]")
-2. $(msg onboard.q2 "[domain A, domain B, …]")
-3. $(msg onboard.q3 "[X, Y, Z]")
+Aim for total time <= 3 minutes.
 
-**$(msg onboard.questions_group2)**
+Group 1 - confirm understanding:
 
-4. $(msg onboard.q4) Multi-select:
-   - `backlog` — initial BACKLOG with seeded stories
-   - `features` — features index + per-feature spec stubs
-   - `domain` — DDD context map
-   - `briefs` — directory for `$roll-brief` outputs
-5. Of these existing docs, which should I `include` rather than regenerate?
-   - (list candidates: README.md, docs/architecture.md, etc.)
-6. Put drafts inside `.roll/`? (default: yes; "no" means use the legacy `docs/` layout — not recommended for new adoption)
+1. Is this type/description right?
+2. Are these domains right?
+3. Are these key modules right?
 
-**Group 3 — Privacy & next steps**
+Group 2 - scope:
 
-7. Add `.roll/` to `.gitignore`? (yes = keep project management private; no = commit it like Roll itself does)
-8. Sync Roll conventions to which AI tools? Multi-select from detected agents (claude / kimi / codex / pi / agy / reasonix)
+4. Which Roll surfaces should `roll init --apply` create? Multi-select:
+   - `backlog` - initial backlog
+   - `features` - features index and per-feature spec stubs
+   - `domain` - DDD context map
+   - `briefs` - directory for brief outputs
+5. Which existing docs should Roll include rather than regenerate?
+6. Put drafts inside `.roll/`? Default yes.
+
+Group 3 - privacy and next steps:
+
+7. Add `.roll/` to `.gitignore`?
+8. Sync Roll conventions to which detected AI tools?
 9. Enable `roll loop` autonomous execution after init?
 
-### Step 4 — Write plan file
+### Step 4 - Write `.roll/init-diagnosis.yaml`
 
-Write `.roll/onboard-plan.yaml` with this exact schema (validated by `lib/roll-plan-validate.py`):
+Create `.roll/` if needed, then write this schema:
 
 ```yaml
 version: 1
-generated_at: "2026-05-19T14:30:00+08:00"   # current ISO 8601, your timezone OK
-
-project_understanding:
-  type: cli                                  # one of: backend-service / frontend-only / fullstack / cli
-  description: "..."
-  domains: [...]
-  key_modules: [...]
-
-scope:
-  approved: [backlog, features, domain]      # user's Q4 multi-select
-  declined: [briefs]                         # what they said no to
-
-include_existing:
-  - README.md                                # user's Q5 selections
-  - docs/architecture.md
-
-privacy:
-  gitignore_dot_roll: true                   # user's Q7
-
-sync_targets: [claude, pi]                   # user's Q8
-enable_loop: false                            # user's Q9
-agent_routes_template: default                # user's Q10 — agent routing preset
-                                              # one of: default / minimal / heavy / skip
-                                              # default = pi/claude + history (US-AGENT-002)
-                                              # minimal = single agent (pi), no history
-                                              # heavy   = pi/claude/kimi + larger window
-                                              # skip    = don't seed .roll/agent-routes.yaml
-
-# ── US-ONBOARD-016: Phase 2 analysis sections (optional, but emit all three) ──
-# All three are validated only when present, so they are backward-compatible,
-# but a normal onboard should produce them from Step 1b.
-
-domain_model:
-  bounded_contexts:                          # [] if none can be inferred — never invent
-    - name: auth
-      aggregates: [User, Session]
-      ubiquitous_language: [login, token, refresh]
-
-tech_analysis:
-  stack: [bash, python3]                     # evidenced by manifests
-  dependencies: [pyyaml]                     # from package.json / pyproject / go.mod / ...
-  architecture_notes: ["single-binary CLI + python helpers in lib/"]
-  risks:
-    - description: "no automated test run on macOS bash 3.2"
-      severity: HIGH                         # optional: LOW | MEDIUM | HIGH
-      evidence: detected                     # optional: detected | inferred
-
-# test_assessment — ANTI-HALLUCINATION: every claim is a mapping with an
-# `evidence` tag (detected | inferred). A zero-result scan is `none detected`
-# tagged `detected`. Untagged free-text is REJECTED by the validator.
-test_assessment:
-  current_layers:
-    - claim: "112 bats files detected under tests/"   # evidence: a real scan count
-      evidence: detected
-  gaps:
-    - claim: "none detected"                 # e.g. no coverage/ dir found
-      evidence: detected
-  recommended_actions:                       # [] if nothing is missing
-    - claim: "add a macOS CI runner (inferred from launchd-only test skips)"
-      evidence: inferred                     # an inference traceable to a detected fact
+createdAt: "2026-06-27T00:00:00+08:00"
+factsHash: "sha256:<64 lowercase hex chars from roll init>"
+diagnosis:
+  kind: codebase-no-roll
+  recommendedPath: agentic-onboard
+  confidence: high
+  reasons:
+    - Existing source, tests, or manifests found without Roll markers.
+agent:
+  name: codex
+  status: available
 ```
 
-Then tell the user:
+### Step 5 - Write `.roll/onboard-plan.yaml`
 
-> Onboard conversation done. Plan saved to `.roll/onboard-plan.yaml`.
+Write this schema. `factsHash` must exactly match `.roll/init-diagnosis.yaml`.
+
+```yaml
+version: 1
+generated_at: "2026-06-27T00:00:00+08:00"
+factsHash: "sha256:<same value as init-diagnosis.yaml>"
+
+file_operations:
+  - path: .roll/init-diagnosis.yaml
+    operation: write
+    idempotent: true
+  - path: .roll/onboard-plan.yaml
+    operation: write
+    idempotent: true
+
+merge_intents:
+  - target: roll_conventions
+    owner: roll-init-apply
+    strategy: merge global Roll conventions into AGENTS.md
+  - target: backlog
+    owner: roll-init-apply
+    strategy: create only when approved by scope
+  - target: features
+    owner: roll-init-apply
+    strategy: create only when approved by scope
+  - target: domain
+    owner: roll-init-apply
+    strategy: create only when approved by scope
+  - target: briefs
+    owner: roll-init-apply
+    strategy: create only when approved by scope
+  - target: agent_routes
+    owner: roll-init-apply
+    strategy: seed selected routing template
+  - target: gitignore
+    owner: roll-init-apply
+    strategy: append .roll/ only when privacy requests it
+  - target: sync_targets
+    owner: roll-init-apply
+    strategy: sync conventions after apply succeeds
+
+project_understanding:
+  type: cli
+  description: "..."
+  domains: []
+  key_modules: []
+
+scope:
+  approved: [backlog, features, domain]
+  declined: [briefs]
+
+include_existing:
+  - README.md
+
+privacy:
+  gitignore_dot_roll: true
+
+sync_targets: [claude, pi]
+enable_loop: false
+agent_routes_template: default
+
+domain_model:
+  bounded_contexts: []
+
+tech_analysis:
+  stack: []
+  dependencies: []
+  architecture_notes: []
+  risks: []
+
+test_assessment:
+  current_layers:
+    - claim: "none detected"
+      evidence: detected
+  gaps:
+    - claim: "none detected"
+      evidence: detected
+  recommended_actions: []
+```
+
+Forbidden plan content:
+
+- No `cmd`, `command`, `commands`, `exec`, `run`, `script`, `shell`, or `shell_commands` keys.
+- No `file_operations` path except `.roll/init-diagnosis.yaml` and `.roll/onboard-plan.yaml`.
+- No direct path mutation intent for source files, `AGENTS.md`, `.gitignore`, `.roll/backlog.md`, docs, features, or offboard files.
+- No `merge_intents[].path`; use `target` + `owner: roll-init-apply`.
+
+### Step 6 - Stop
+
+Tell the user:
+
+> Onboard conversation done. Diagnosis saved to `.roll/init-diagnosis.yaml`.
+> Plan saved to `.roll/onboard-plan.yaml`.
+> Review `.roll/init-diagnosis.yaml` and `.roll/onboard-plan.yaml` before applying.
 > Return to your terminal and run:
 >
 >     roll init --apply
 >
+> In non-interactive automation after review, use:
+>
+>     roll init --apply --auto
+>
+> After apply, continue with:
+>
+>     roll next
+>
 > The plan expires in 24 hours.
 
-### Step 5 — Stop
+Do not run `roll init --apply` yourself.
 
-Do NOT run `roll init --apply` yourself. Do NOT modify other project files. Your job is done.
+## Failure Modes
 
-## When NOT to use
-
-- **Not a legacy project**: empty dir or fresh project → use plain `roll init` instead
-- **Has BACKLOG.md or docs/features/**: this is a pre-2.0 Roll project → run `npx @seanyao/roll@2 migrate` first
-- **Has .roll/ already**: already onboarded → don't re-run
-
-## Failure modes
-
-- User aborts mid-conversation → don't write partial plan; tell user to re-run from scratch
-- User answers contradict the gap report (e.g., declines `features` but has lots of code) → ask the contradictory question once more before accepting; if they confirm, respect the choice
-- You can't read enough code to fill `project_understanding` (e.g., binary repo) → write a placeholder plan but ask user to fill in `type` and `description` manually before applying
+- User aborts mid-conversation: do not write partial artifacts; tell the user to rerun from scratch.
+- Answers contradict detected facts: ask the contradictory question once more; if they confirm, respect the choice.
+- You cannot infer enough project understanding: write the artifact with detected facts only and tell the user which fields must be edited before apply.

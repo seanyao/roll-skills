@@ -45,3 +45,7 @@ Load when a build, fix, review, or story needs Roll QA coverage standards: test 
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Role in v4 execution profiles
+
+These QA standards are an **Evaluator capability** in the `verified`/`planned` execution profiles: the independent Evaluator applies them to judge story satisfaction and produces an `eval-report.md` (blocking findings, advisory findings, score, attest/evidence status, recommendation) — distinct from CI feedback and from the Builder's self-report. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)

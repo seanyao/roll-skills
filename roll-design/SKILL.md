@@ -51,3 +51,7 @@ Load when the user wants to discuss approaches, design a solution, model domains
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Role in v4 execution profiles
+
+In the `planned` execution profile, **roll-design is the Planner capability**: in a FRESH session before the Builder it writes a `planner-contract.md` (scope boundary, acceptance/evaluation contract, expected evidence, risks, out-of-scope items, resize/split guidance) that the Builder consumes via artifact refs. roll-design stays a skill — the TS engine owns orchestration and validates the contract fail-closed before the Builder starts. For pure design/backlog planning the user loads roll-design directly; it does not auto-trigger. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)

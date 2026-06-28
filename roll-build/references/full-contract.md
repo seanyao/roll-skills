@@ -692,8 +692,8 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
    tmux observation window `roll-loop-<slug>` is a natural target — display the
    proof there), then `screencapture -x -R <window-rect>` (macOS) into
    `screenshots/`. Capture ONLY the relevant work area — a focused window, not
-   the whole desktop. Unattended cycles: drive the capture from the dispatcher
-   (deterministic), never hand-craft an image; if the capture channel is
+   the whole desktop. Unattended cycles: drive the capture from the runner's
+   capture lane (deterministic), never hand-craft an image; if the capture channel is
    unavailable (no GUI session / no permission), fall back to text evidence and
    mark the AC `partial` with a note — never fake a screenshot.
 

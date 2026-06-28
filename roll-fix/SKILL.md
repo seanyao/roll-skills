@@ -47,3 +47,7 @@ Load when the user provides a FIX-XXX or BUG-XXX item, or asks for a focused hot
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Role in v4 execution profiles
+
+**roll-fix is the Builder capability for hot-fix scope** (a single issue), normally under the `standard` execution profile — the same TCR/test/attest flow as roll-build, with no Planner or Evaluator. A fix that turns out user-visible or evidence-risky is selected into `verified`; one that turns out cross-module or ambiguous into `planned`. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)

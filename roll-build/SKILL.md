@@ -48,3 +48,7 @@ Load when a user gives a US-XXX story or asks to ship a feature through Roll TCR
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Role in v4 execution profiles
+
+**roll-build is the Builder capability in every execution profile** (`standard` / `verified` / `planned`). Under `planned` it receives the Planner's `planner-contract.md` via artifact refs (no shared raw session). Under `verified`/`planned` an independent **Evaluator** (a fresh session) judges the delivery and may open a BOUNDED repair round — you address the blocking findings and write a repair note mapping findings → changes. `standard` is Builder-only. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)

@@ -390,8 +390,8 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    tmux observation window `roll-loop-<slug>` is a natural target — display the
    proof there), then `screencapture -x -R <window-rect>` (macOS) into
    `screenshots/`. Capture ONLY the relevant work area — a focused window, not
-   the whole desktop. Unattended cycles: drive the capture from the dispatcher
-   (deterministic), never hand-craft an image; if the capture channel is
+   the whole desktop. Unattended cycles: drive the capture from the runner's
+   capture lane (deterministic), never hand-craft an image; if the capture channel is
    unavailable (no GUI session / no permission), fall back to text evidence and
    mark the AC `partial` with a note — never fake a screenshot.
 2. **Write the intent map** `.roll/features/<epic>/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
