@@ -12,6 +12,12 @@ This hub keeps the routing boundary, hard gates, and execution skeleton in the i
 
 Load when the user wants to discuss approaches, design a solution, model domains, split work into INVEST stories, or write backlog/spec artifacts without coding.
 
+## Operating Modes
+
+Used in **guided** mode when the owner explicitly designs or splits work, and in
+**autonomous** mode only as the Planner capability selected by a `planned`
+execution profile. It must never silently start Builder work.
+
 ## When Not to Use
 
 - Existing US implementation; load roll-build.
@@ -38,7 +44,7 @@ Load when the user wants to discuss approaches, design a solution, model domains
 - Peer review gates apply only when explicitly available/requested.
 - No story decomposition until a detailed design exists and the owner has signed off (proportional to risk). Decomposition slices an agreed design — it is NOT a substitute for designing. If you cannot show at least one complete worked sample of the intended output/behavior, the design is NOT done.
 - **Evaluation contract (US-SKILL-030 — planner-builder-evaluator artifact contract)**: every newly split story spec MUST include an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus`. This artifact is authored by the planner and consumed by builder (roll-build/roll-fix reads before coding) and evaluator (peer score prompt reads the contract; attest surfaces planned-vs-delivered mapping) — not a fixed three-agent collaboration model. Genuinely trivial/internal stories may carry a one-item minimal block, but never omit it. See `references/full-contract.md` for the full template and rules.
-- **Visual-evidence contract (FIX-311 — design-phase gate)**: every story spec is born honest. By default each story MUST carry one AC that captures its user-visible surface (web/CLI/TUI), and a web/visual card MUST declare the real product surface in its spec frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `.roll/features/index.html#casting`), NEVER the card's own dossier/report page. A card with genuinely no visual surface writes `screenshot_exempt: <reason>` (a naked `true`/`yes` is NOT a valid exemption — it must carry a reason). This is enforced, not advisory: `validateStoryVisualEvidence(specText)` in `packages/cli/src/lib/design-visual-evidence.ts` returns `ok:false` for a non-exempt spec with no visual-evidence AC, or one that declares a visual surface but no `deliverable_url`. Keyword matching may only RECOGNISE an exemption / an existing visual-evidence AC — it may NEVER be used to decide a card needs a screenshot (it always does, by default). This is the same contract the runtime enforce gate (FIX-309) and archive gate (FIX-334) hold; the three must agree.
+- **Visual-evidence contract (FIX-311 — design-phase gate)**: every story spec is born honest. By default each story MUST carry one AC that captures its user-visible surface (web/CLI/TUI), and a web/visual card MUST declare the real product surface in its spec frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `https://app.example.test/casting#board`), NEVER the card's own dossier/report/archive page. A card with genuinely no visual surface writes `screenshot_exempt: <reason>` (a naked `true`/`yes` is NOT a valid exemption — it must carry a reason). This is enforced, not advisory: `validateStoryVisualEvidence(specText)` in `packages/cli/src/lib/design-visual-evidence.ts` returns `ok:false` for a non-exempt spec with no visual-evidence AC, or one that declares a visual surface but no `deliverable_url`. Keyword matching may only RECOGNISE an exemption / an existing visual-evidence AC — it may NEVER be used to decide a card needs a screenshot (it always does, by default). This is the same contract the runtime enforce gate (FIX-309) and archive gate (FIX-334) hold; the three must agree.
 
 ## Gotchas
 

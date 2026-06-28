@@ -12,6 +12,14 @@ This hub keeps the routing boundary, hard gates, and execution skeleton in the i
 
 Load when configuring, explaining, or operating Roll autonomous backlog execution loop that scans Todo work and dispatches US/FIX/REFACTOR items.
 
+## Operating Modes
+
+This skill is primarily **autonomous**: it describes the scheduler that dispatches
+eligible backlog work. It also documents the explicit mode switches:
+`roll loop on` / `roll loop resume` enter autonomous operation; `roll loop off` /
+`roll loop pause` return control to **guided** operation. Autonomous mode never
+bypasses pause, budget, route, evidence, Evaluator, or release gates.
+
 ## When Not to Use
 
 - One-shot story execution by a human agent; load roll-build or roll-fix.

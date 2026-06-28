@@ -10,7 +10,7 @@ defect, not a delivery omission.
 
 **Must verify (default = REQUIRED; exemption is the only opt-out):**
 - [ ] Every story carries one AC that captures its user-visible surface (web/CLI/TUI screenshot / 截图).
-- [ ] A web/visual card declares the real product surface in frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `.roll/features/index.html#casting`), NEVER the card's own dossier/report page.
+- [ ] A web/visual card declares the real product surface in frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `https://app.example.test/casting#board`), NEVER the card's own dossier/report/archive page.
 - [ ] A card with genuinely no visual surface records `screenshot_exempt: <reason>` (a naked `true`/`yes` is invalid — the reason is mandatory).
 
 **Enforced, not advisory:** `validateStoryVisualEvidence(specText)` in

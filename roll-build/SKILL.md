@@ -12,6 +12,12 @@ This hub keeps the routing boundary, hard gates, and execution skeleton in the i
 
 Load when a user gives a US-XXX story or asks to ship a feature through Roll TCR delivery, from clarification through verification and backlog write-back.
 
+## Operating Modes
+
+Used in **guided** mode when the owner explicitly starts a Story, and in
+**autonomous** mode when the loop scheduler dispatches an eligible Story. The
+same TCR, evidence, Evaluator, and release gates apply in both modes.
+
 ## When Not to Use
 
 - Pure design or backlog splitting without code; load roll-design.
