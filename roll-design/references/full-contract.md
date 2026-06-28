@@ -771,6 +771,25 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 >
 > **MUST fill** the `**Agent profile:**` block on every newly split US. `est_min` is the **sole loop-routing input** — `lib/loop_pick_agent.py` maps it onto a four-slot complexity tier (easy/default/hard/fallback) on the est_min axis alone (missing/illegal → default). Fill `risk_zone` too, but note it does NOT feed routing; it only informs the roll-build / roll-fix pre-flight self-eval (US-AGENT-007).
 
+> **强制规则 — Evaluation contract 必须填（US-SKILL-030）**：每张新 story spec 都必须包含 `**Evaluation contract:**` 块，明确列出 `expected_evidence`（每项 kind/target/proves 三字段）和 `scorer_focus`（peer scorer 评分口径）。纯内部/无可见面的 trivial story 可使用 one-item 最小块，但不可省略。该块由 planner（`roll-design`）撰写，供 builder 和 evaluator 作为共享证据契约消费，不触发三 agent 协同会话。
+
+> **Evaluation contract is required (US-SKILL-030)**: every newly split story spec MUST carry an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus` (scorer rubric). Genuinely trivial/internal stories may use a one-item minimal block but must not omit the section entirely. This block is authored by the planner (`roll-design`) and consumed as a shared artifact contract by builder (`roll-build`/`roll-fix`) and evaluator (peer scorer, attest gate) — no three-agent chat pipeline is introduced.
+>
+> **Block template:**
+> ```markdown
+> **Evaluation contract:**
+> - expected_evidence:
+>   - kind: test | command | screenshot | document | diff | ci | manual
+>     target: <file/command/surface/report that proves an AC>
+>     proves: <AC id or short AC phrase>
+> - scorer_focus:
+>   - <what the peer Review Score should judge beyond generic code quality>
+> - builder_notes:
+>   - <bounded implementation/evidence hints; no hidden requirements>
+> ```
+>
+> **Rules**: (1) `expected_evidence` items are **binding for evidence expectations** — if an item becomes impossible, the builder updates the spec or explains the deviation in the report/ac-map. (2) `scorer_focus` items extend, not replace, the generic scoring rubric. (3) This block complements the visual-evidence contract; `deliverable_url`/`screenshot_exempt` rules are unchanged. (4) Legacy specs without the block degrade gracefully — builder and scorer fall back to the generic rubric with no behavior change.
+
 ### Closing Doc-Refresh Story Template — Phase N.M 收尾文档
 
 When any preceding US in the batch changes user-visible behavior, append this template story at the end of the batch. Wire it as `depends-on:` against every preceding user-facing US so it runs last.
@@ -850,6 +869,29 @@ designer's session), the same independence rule as build/fix.
 The design-side peer Review Score path is tracked by **FIX-344** (the runner's
 score stage does not yet cover `roll-design`). Until FIX-344 lands, this skill
 emits no quality score; the agent just delivers the split + specs and stops.
+
+### The 3-stage shape (subjective deliverable)
+
+A design has **no executable pass/fail test** — correctness is judgment. So it is
+the canonical **3-stage loop**, and naming the stages keeps the roles honest:
+
+- **Planner / Builder = this design session.** Besides the split + specs, it must
+  emit **explicit evaluation criteria for the design itself** — the prose
+  equivalent of a test contract: what would make this design wrong or incomplete
+  (e.g. "every Bounded Context boundary is justified", "the worked sample covers
+  the hardest edge case", "no story depends on a parked parent", "each
+  user-facing story carries a visual-evidence AC"). Write these down so the
+  Evaluator has something concrete to check against rather than a vibe.
+- **Evaluator = an ISOLATED reviewer.** It receives the design artifact + the
+  criteria, and **must not be seeded with the designer's reasoning** (roll-peer's
+  Independent Judgment Rule already enforces exactly this — see the two
+  `[peer]` checkpoints in the Workflow: Direction Review and Plan Review). A
+  fresh same-vendor session is the minimum; a different agent+model is encouraged.
+
+Until the runner's FIX-344 stage lands, the isolated Evaluator is the
+`$roll-peer` Plan Review checkpoint, not an automated score — but the criteria
+above are what it should grade against either way. Emitting the criteria now is
+cheap and makes the future automated Evaluator a drop-in.
 
 ---
 

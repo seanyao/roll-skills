@@ -20,7 +20,7 @@ Use when:
 
 **Workflow:**
 1. Read .roll/backlog.md index → Find FIX/BUG row → Follow link to `.roll/features/<epic>/<story>/spec.md`
-2. **Read the `**Evaluation contract:**` block** if present (US-SKILL-030). Use it to guide test design and evidence collection; map delivered evidence back to the contract's `expected_evidence` items in the ac-map.
+2. **Read the Evaluation contract (US-SKILL-030)** if the spec contains an `**Evaluation contract:**` block. Read `expected_evidence` and `scorer_focus` before writing code; use them to guide test design and evidence collection. Map each evidence item to a planned change and map delivered evidence back to the contract in the ac-map; note any deviation if an item turns out to be N/A for a fix.
 3. Single Action (no splitting)
 4. Execute via TCR workflow
 5. Write back: update .roll/backlog.md status column + update FIX section in Feature file

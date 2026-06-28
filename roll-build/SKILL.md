@@ -26,7 +26,7 @@ Load when a user gives a US-XXX story or asks to ship a feature through Roll TCR
 
 1. Classify input as Story mode or Fly mode.
 2. Read backlog/spec and decide if the story fits one cycle.
-3. Split into small TCR actions and define verification.
+3. Split into small TCR actions; per Action route objective work to the 4-stage TCR loop and judgment-dependent work to a 3-stage criteria+Evaluator loop, then define verification.
 4. Run test-first implementation, self-review, evidence, and write-back.
 5. Commit on green, open PR, and leave remote evidence.
 
@@ -34,6 +34,7 @@ Load when a user gives a US-XXX story or asks to ship a feature through Roll TCR
 
 - TCR for every micro-step.
 - No WIP commits or bypassed verification.
+- In the test-gated loop the tests are the weakest link: an isolated Test Adequacy reviewer (Phase 6 Agent 4) audits the tests against the AC, seeing only AC + test files — never the implementation diff or builder reasoning. Self-review of one's own tests (Phase 2) is necessary but not isolation.
 - Self-review, attest, and E2E evidence remain required. The Review Score is produced by the runner's fresh-session peer Reviewer — the agent does NOT self-score.
 - Docs/code/product alignment is a DoD gate: user-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery.
 
