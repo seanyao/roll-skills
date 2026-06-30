@@ -48,4 +48,4 @@ Load when a build, fix, review, or story needs Roll QA coverage standards: test 
 
 ## Role in v4 execution profiles
 
-These QA standards are an **Evaluator capability** in the `verified`/`planned` execution profiles: the independent Evaluator applies them to judge story satisfaction and produces an `eval-report.md` (blocking findings, advisory findings, score, attest/evidence status, recommendation) — distinct from CI feedback and from the Builder's self-report. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)
+These QA standards are an **Evaluator capability** in the `verified`/`planned` execution profiles: the independent Evaluator applies them to judge story satisfaction and produces an `eval-report.md` (blocking findings, advisory findings, score, attest/evidence status, recommendation) — distinct from CI feedback and from the Builder's self-report. (Roles: Prime Agent / Planner / Builder / Evaluator; never Supervisor/Watchman/Dispatcher/Governor.)

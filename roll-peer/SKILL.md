@@ -48,4 +48,4 @@ Load when the user explicitly asks for peer review, cross-agent negotiation, /pe
 
 ## Role in v4 execution profiles
 
-Cross-agent peer review is an **Evaluator capability**: an independent fresh-session reviewer (never the Builder's session) scores the delivery. The Evaluator's judgment is binding for story satisfaction; peer negotiation is the mechanism. In `verified`/`planned` profiles this feeds the `eval-report.md`. (Roles: Supervisor Agent / Planner / Builder / Evaluator; never Prime/Watchman/Dispatcher/Governor.)
+Cross-agent peer review is an **Evaluator capability**: an independent fresh-session reviewer (never the Builder's session) scores the delivery. The Evaluator's judgment is binding for story satisfaction; peer negotiation is the mechanism. In `verified`/`planned` profiles this feeds the `eval-report.md`. (Roles: Prime Agent / Planner / Builder / Evaluator; never Supervisor/Watchman/Dispatcher/Governor.)
