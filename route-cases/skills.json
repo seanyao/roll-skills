@@ -152,6 +152,16 @@
         "write a human product proposal"
       ]
     },
+    "roll-prime": {
+      "positive": [
+        "coordinate the backlog as Prime in guided mode with the owner",
+        "watch loop cycles read-only and diagnose structural failures before retry"
+      ],
+      "negative": [
+        "implement a US-XXX story as Builder through TCR",
+        "only refresh a supervisor live dashboard without coordinating"
+      ]
+    },
     "roll-notes": {
       "positive": [
         "record this development discovery in today's project diary",
