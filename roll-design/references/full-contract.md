@@ -790,13 +790,13 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 >
 > **Rules**: (1) `expected_evidence` items are **binding for evidence expectations** — if an item becomes impossible, the builder updates the spec or explains the deviation in the report/ac-map. (2) `scorer_focus` items extend, not replace, the generic scoring rubric. (3) This block complements the visual-evidence contract; `deliverable_url`/`screenshot_exempt` rules are unchanged. (4) Legacy specs without the block degrade gracefully — builder and scorer fall back to the generic rubric with no behavior change.
 
-### Closing Doc-Refresh Story Template — Phase N.M 收尾文档
+### Closing Doc-Refresh Story Template — Phase N.M Documentation Refresh
 
 When any preceding US in the batch changes user-visible behavior, append this template story at the end of the batch. Wire it as `depends-on:` against every preceding user-facing US so it runs last.
 
 ```markdown
 <a id="us-{domain}-{n}"></a>
-## US-{DOMAIN}-{N} Phase {N.M} 用户文档刷新（中英双轨） 📋
+## US-{DOMAIN}-{N} Phase {N.M} documentation refresh 📋
 
 **Created**: {YYYY-MM-DD}
 
@@ -805,11 +805,12 @@ When any preceding US in the batch changes user-visible behavior, append this te
 - So that the next person reading the guide / README / `--help` does not hit a stale version
 
 **AC:**
-- [ ] Update each affected doc file listed below; **English line and Chinese line on separate lines**, never inline
+- [ ] Update each affected doc file listed below; each rendered page is single-language for its locale
 - [ ] `roll <cmd> --help` output reflects new flags / commands / status semantics (paste verified output)
 - [ ] README index links to any new guide pages
 - [ ] Error-message changes are mirrored in troubleshooting / FAQ sections
 - [ ] Verified: no doc page still describes the pre-Phase behavior
+- [ ] Locale resources/catalog entries stay consistent across affected `en` and `zh` surfaces
 
 **Files:**
 - `guide/en/{topic}.md`
@@ -975,19 +976,21 @@ guide notices.
 - 安全 / 隔离基础设施（沙箱配置、权限矩阵内部调整）
 - 测试基础设施 / fixture 数据更新
 
-**Checklist for the doc-refresh story (中英双语必需)：**
+**Checklist for the doc-refresh story (locale consistency required):**
 - [ ] `guide/en/<topic>.md` — English guide updated
 - [ ] `guide/zh/<topic>.md` — Chinese guide updated
 - [ ] `README.md` index links to any new doc page
 - [ ] `--help` output snapshot matches new flags / commands / status semantics
 - [ ] Error-message strings reflected in troubleshooting / FAQ
-- [ ] **Bilingual rule**: English and Chinese on **separate lines**, never inline
-      （遵循 project CLAUDE.md 中 Bilingual Output Convention）
+- [ ] **Language surface rule**: each rendered page/output uses exactly one
+      locale; multilingual source resources stay behind `guide/en`, `guide/zh`,
+      or catalog boundaries
 
 **How to wire the doc-refresh story:**
 1. Place it **last** in the batch
 2. `depends-on:` lists **every** preceding user-facing US in the batch
-3. Title 用 "Phase N.M 用户文档刷新（中英双轨）" 模板（见 [Story Format](#story-format) 中的模板）
+3. Use the "Phase N.M documentation refresh" title template from
+   [Story Format](#story-format)
 4. Cite a worked example in its Dependencies note — current best reference is
    `features/authoring/slide-deck-generator.md` US-DECK-015 (roll slides Phase 1.5)
 
