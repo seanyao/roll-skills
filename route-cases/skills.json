@@ -154,7 +154,7 @@
     },
     "roll-prime": {
       "positive": [
-        "coordinate the backlog as Prime in guided mode with the owner",
+        "coordinate the backlog as Supervisor in guided mode with the owner",
         "watch loop cycles read-only and diagnose structural failures before retry"
       ],
       "negative": [

@@ -1,6 +1,6 @@
-# Prime Explorer Annex — Read-Only Deep Diagnosis
+# Supervisor Explorer Annex — Read-Only Deep Diagnosis
 
-Use when Prime needs evidence-heavy investigation without polluting the main
+Use when Supervisor needs evidence-heavy investigation without polluting the main
 coordination session.
 
 ## When to spawn
@@ -14,7 +14,7 @@ coordination session.
 - **Read-only.** No edits to product repo, Builder worktrees, or `.roll` meta.
 - **No dispatch.** Do not `loop go`, `recover`, or `repair-evidence`.
 - **Evidence only.** Output: conclusion + file:line + event refs + recommended
-  Prime action (recover / salvage / FIX card / owner).
+  Supervisor action (recover / salvage / FIX card / owner).
 
 ## Suggested commands
 
@@ -26,7 +26,7 @@ tail -n 80 .roll/loop/cycle-logs/<cycle-id>.agent.log
 nl -ba packages/... | sed -n '...'   # only when classifying harness bugs
 ```
 
-## Handback to Prime
+## Handback to Supervisor
 
 Return a short brief:
 
@@ -35,5 +35,5 @@ Return a short brief:
 3. **Artifacts** (paths + line refs)
 4. **Recommended next move** (exact `roll` command or backlog card)
 
-Prime synthesizes for the owner; explorer does not speak to the owner directly
-unless Prime delegates.
+Supervisor synthesizes for the owner; explorer does not speak to the owner directly
+unless Supervisor delegates.

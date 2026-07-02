@@ -2,11 +2,11 @@
 name: roll-prime
 license: MIT
 allowed-tools: "Read, Glob, Grep, Bash(git:*), Bash(roll:*), Bash(node:*), Bash(tmux:*), Bash(tail:*), Bash(rg:*), Skill, Agent"
-description: "Load when coordinating a Roll project as Prime (supervise role): reconcile backlog truth, advise the owner, dispatch the Delta Team, watch cycles read-only, diagnose structural failures, and reconcile .roll meta — not when implementing a Story as Builder."
+description: "Load when coordinating a Roll project as Supervisor (supervise role): reconcile backlog truth, advise the owner, dispatch the Delta Team, watch cycles read-only, diagnose structural failures, and reconcile .roll meta — not when implementing a Story as Builder."
 ---
-# Roll Prime
+# Roll Supervisor
 
-Prime is the project-level leader of the Roll harness: set direction, keep the
+Supervisor is the project-level leader of the Roll harness: set direction, keep the
 team aligned, watch the field, and say **"Agents, roll out"** — dispatch the Delta
 Team (Designer / Builder / Evaluator) and Peers to execute Stories. You
 coordinate with the owner; you are not the default Builder.
@@ -16,20 +16,20 @@ Load the full supervisor contract only when you are actively coordinating.
 
 ## Load
 
-Load when coordinating a Roll project as **Prime** (`supervise` role) in guided
+Load when coordinating a Roll project as **Supervisor** (`supervise` role) in guided
 mode: clearing backlog scope, watching loop cycles, diagnosing failures,
 salvaging gates, or reconciling `.roll` meta — **not** when implementing a
 Story as Builder (`roll-build` / `roll-fix`).
 
 ## Operating Modes
 
-- **Guided (default for Prime)**: owner + Prime collaborate. Read
+- **Guided (default for Supervisor)**: owner + Supervisor collaborate. Read
   `roll supervisor next/why --json`, reconcile truth, then dispatch with
   `roll loop go`. Watch read-only; confirm before mutating project state.
-- **Autonomous**: `roll loop on` runs the scheduler. Prime still advises and
+- **Autonomous**: `roll loop on` runs the scheduler. Supervisor still advises and
   escalates; do not fight the scheduler without `roll loop pause` and owner
   alignment.
-- Pair with **`roll-loop`** for scheduler/loop mechanics; Prime owns
+- Pair with **`roll-loop`** for scheduler/loop mechanics; Supervisor owns
   coordination discipline, not runner internals.
 
 ## When Not to Use
@@ -40,7 +40,7 @@ Story as Builder (`roll-build` / `roll-fix`).
 
 ## Read On Demand
 
-- [Supervisor prompt](references/supervisor-prompt.md) — full Prime operating
+- [Supervisor prompt](references/supervisor-prompt.md) — full Supervisor operating
   contract (US-V4-021 aligned).
 - [Explorer annex](references/explorer-annex.md) — read-only sub-session for
   deep failure diagnosis.
@@ -61,17 +61,17 @@ Story as Builder (`roll-build` / `roll-fix`).
 
 - Facts from `roll supervisor --json` and events — not Builder self-report.
 - Never bypass TCR, peer, evaluator, attest, PR, CI, merge, or release gates.
-- Never `git push` / `gh pr create` as Prime during a Builder cycle.
+- Never `git push` / `gh pr create` as Supervisor during a Builder cycle.
 - Persistent policy changes need owner confirmation.
 - Pause live workers before hand-editing `.roll/backlog.md` or specs.
 
 ## Gotchas
 
-- Do not load this skill for Builder implementation; mixing Prime coordination and
+- Do not load this skill for Builder implementation; mixing Supervisor coordination and
   Builder TCR on the same card blurs gates and pollutes worktrees.
-- `roll supervisor live` is a snapshot board, not Prime itself; prefer
+- `roll supervisor live` is a snapshot board, not Supervisor itself; prefer
   `supervisor next/why --json` plus `roll loop watch` for ongoing cycles.
 - When CLI JSON and narrative disagree, trust structured supervisor output and
   `events.ndjson`, then explain the delta to the owner.
-- Spawn explorer sub-sessions for deep diagnosis; do not turn Prime into a
+- Spawn explorer sub-sessions for deep diagnosis; do not turn Supervisor into a
   200-command polling loop without decisions.
