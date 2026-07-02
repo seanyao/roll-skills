@@ -57,4 +57,4 @@ modes.
 
 ## Role in v4 execution profiles
 
-**roll-fix is the Builder capability for hot-fix scope** (a single issue), normally under the `standard` execution profile — the same TCR/test/attest flow as roll-build, with no Planner or Evaluator. A fix that turns out user-visible or evidence-risky is selected into `verified`; one that turns out cross-module or ambiguous into `planned`. (Roles: Prime Agent / Planner / Builder / Evaluator; never Supervisor/Watchman/Dispatcher/Governor.)
+**roll-fix is the Builder capability for hot-fix scope** (a single issue), normally under the `standard` execution profile — the same TCR/test/attest flow as roll-build, with no Designer or Evaluator. A fix that turns out user-visible or evidence-risky is selected into `verified`; one that turns out cross-module or ambiguous into `designed`. Roles: Supervisor / Designer / Builder / Evaluator.

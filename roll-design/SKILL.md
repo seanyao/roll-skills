@@ -15,7 +15,7 @@ Load when the user wants to discuss approaches, design a solution, model domains
 ## Operating Modes
 
 Used in **guided** mode when the owner explicitly designs or splits work, and in
-**autonomous** mode only as the Planner capability selected by a `planned`
+**autonomous** mode only as the Designer capability selected by a `designed`
 execution profile. It must never silently start Builder work.
 
 ## When Not to Use
@@ -43,7 +43,7 @@ execution profile. It must never silently start Builder work.
 - Backlog rows and spec files must stay consistent.
 - Peer review gates apply only when explicitly available/requested.
 - No story decomposition until a detailed design exists and the owner has signed off (proportional to risk). Decomposition slices an agreed design — it is NOT a substitute for designing. If you cannot show at least one complete worked sample of the intended output/behavior, the design is NOT done.
-- **Evaluation contract (US-SKILL-030 — planner-builder-evaluator artifact contract)**: every newly split story spec MUST include an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus`. This artifact is authored by the planner and consumed by builder (roll-build/roll-fix reads before coding) and evaluator (peer score prompt reads the contract; attest surfaces planned-vs-delivered mapping) — not a fixed three-agent collaboration model. Genuinely trivial/internal stories may carry a one-item minimal block, but never omit it. See `references/full-contract.md` for the full template and rules.
+- **Evaluation contract (US-SKILL-030 — designer-builder-evaluator artifact contract)**: every newly split story spec MUST include an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus`. This artifact is authored by the Designer and consumed by Builder (roll-build/roll-fix reads before coding) and Evaluator (peer score prompt reads the contract; attest surfaces design-contract-vs-delivered mapping) — not a fixed three-agent collaboration model. Genuinely trivial/internal stories may carry a one-item minimal block, but never omit it. See `references/full-contract.md` for the full template and rules.
 - **Visual-evidence contract (FIX-311 — design-phase gate)**: every story spec is born honest. By default each story MUST carry one AC that captures its user-visible surface (web/CLI/TUI), and a web/visual card MUST declare the real product surface in its spec frontmatter — `deliverable_url:` (alias `screenshot_url:`) pointing at the actual deliverable page (e.g. `https://app.example.test/casting#board`), NEVER the card's own dossier/report/archive page. A card with genuinely no visual surface writes `screenshot_exempt: <reason>` (a naked `true`/`yes` is NOT a valid exemption — it must carry a reason). This is enforced, not advisory: `validateStoryVisualEvidence(specText)` in `packages/cli/src/lib/design-visual-evidence.ts` returns `ok:false` for a non-exempt spec with no visual-evidence AC, or one that declares a visual surface but no `deliverable_url`. Keyword matching may only RECOGNISE an exemption / an existing visual-evidence AC — it may NEVER be used to decide a card needs a screenshot (it always does, by default). This is the same contract the runtime enforce gate (FIX-309) and archive gate (FIX-334) hold; the three must agree.
 
 ## Gotchas
@@ -60,4 +60,4 @@ execution profile. It must never silently start Builder work.
 
 ## Role in v4 execution profiles
 
-In the `planned` execution profile, **roll-design is the Planner capability**: in a FRESH session before the Builder it writes a `planner-contract.md` (scope boundary, acceptance/evaluation contract, expected evidence, risks, out-of-scope items, resize/split guidance) that the Builder consumes via artifact refs. roll-design stays a skill — the TS engine owns orchestration and validates the contract fail-closed before the Builder starts. For pure design/backlog planning the user loads roll-design directly; it does not auto-trigger. (Roles: Prime Agent / Planner / Builder / Evaluator; never Supervisor/Watchman/Dispatcher/Governor.)
+In the `designed` execution profile, **roll-design is the Designer capability**: in a FRESH session before the Builder it writes a `design-contract.md` (scope boundary, acceptance/evaluation contract, expected evidence, risks, out-of-scope items, resize/split guidance) that the Builder consumes via artifact refs. roll-design stays a skill — the TS engine owns orchestration and validates the contract fail-closed before the Builder starts. For pure design/backlog planning the user loads roll-design directly; it does not auto-trigger. Roles: Supervisor / Designer / Builder / Evaluator.

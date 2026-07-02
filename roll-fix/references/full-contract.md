@@ -20,7 +20,7 @@ Use when:
 
 **Workflow:**
 1. Read .roll/backlog.md index → Find FIX/BUG row → Follow link to `.roll/features/<epic>/<story>/spec.md`
-2. **Read the Evaluation contract (US-SKILL-030)** if the spec contains an `**Evaluation contract:**` block. Read `expected_evidence` and `scorer_focus` before writing code; use them to guide test design and evidence collection. Map each evidence item to a planned change and map delivered evidence back to the contract in the ac-map; note any deviation if an item turns out to be N/A for a fix.
+2. **Read the Evaluation contract (US-SKILL-030)** if the spec contains an `**Evaluation contract:**` block. Read `expected_evidence` and `scorer_focus` before writing code; use them to guide test design and evidence collection. Map each evidence item to a candidate change and map delivered evidence back to the contract in the ac-map; note any deviation if an item turns out to be N/A for a fix.
 3. Single Action (no splitting)
 4. Execute via TCR workflow
 5. Write back: update .roll/backlog.md status column + update FIX section in Feature file
@@ -526,9 +526,10 @@ Review Score (1..10 + verdict + rationale), recorded with `scoredBy` and the
 fresh-session id so independence is verifiable.
 
 Independence is about session/context, not vendor: a fresh same-vendor session
-is the minimum acceptable; a different agent+model+session (non-sub-agent) is
-encouraged (absolute heterogeneity). A score sharing the builder's session
-(including any sub-agent of it) is rejected as a self-score.
+is the minimum acceptable; a different agent+model+session (non-sub-agent) is a
+ranking preference unless the owner explicitly requested strict diversity. A
+score sharing the builder's session (including any sub-agent of it) is rejected
+as a self-score.
 
 Score guidance the Reviewer applies (integer 1..10):
 - **9..10** — clean root-cause fix; regression test added; TCR cycle smooth.
@@ -556,12 +557,14 @@ GAPS: <gap one; gap two; ...>
 ```
 
 On a RESIZE signal (low score) the loop runs `roll loop review-resize FIX-XXX`:
-`$roll-design` mints sub-stories from the gaps, ≥2 **heterogeneous** reviewers
-gate the split by consensus (all agree → auto-land via `roll loop self-downgrade`,
-parking the FIX at 🚫 Hold + appending sub-stories; any objection → pause +
-ALERT, backlog unchanged), with the chain-depth cap (US-AGENT-009) stopping
-runaway splits. The human is on the loop (alerted only on consensus failure or
-the cap), not in it. Never emit RESIZE for a pure quality problem.
+`$roll-design` mints sub-stories from the gaps, and ≥2 fresh-session reviewers
+gate the split by consensus. Prefer diverse agents/models when available, but do
+not block solely on matching brand/provider unless the owner requested strict
+diversity. When all agree, auto-land via `roll loop self-downgrade`, parking the
+FIX at 🚫 Hold + appending sub-stories; any objection → pause + ALERT, backlog
+unchanged. The chain-depth cap (US-AGENT-009) stops runaway splits. The human is
+on the loop (alerted only on consensus failure or the cap), not in it. Never emit
+RESIZE for a pure quality problem.
 
 ## Rubric
 

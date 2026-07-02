@@ -731,9 +731,9 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 - builder_notes:
   - {bounded implementation/evidence hints; no hidden requirements}
 
-> **强制规则 — Evaluation contract 必须填**：每张新 story 必须带 `**Evaluation contract:**` 块（expected_evidence + scorer_focus）。这是 planner 写给 builder 和 evaluator 的验收契约——builder 编码前读 contract、交付后把 ac-map 项映射回 contract 的 expected_evidence；evaluator（peer score / attest gate）读 contract 对账。不是固定三 agent 协同模型，是 artifact-based 契约。真正 trivial/internal 故事可放一项 minimal block，但不许省略。
+> **强制规则 — Evaluation contract 必须填**：每张新 story 必须带 `**Evaluation contract:**` 块（expected_evidence + scorer_focus）。这是 Designer 写给 Builder 和 Evaluator 的验收契约——Builder 编码前读 contract、交付后把 ac-map 项映射回 contract 的 expected_evidence；Evaluator（peer score / attest gate）读 contract 对账。不是固定三 agent 协同模型，是 artifact-based 契约。真正 trivial/internal 故事可放一项 minimal block，但不许省略。
 >
-> **MUST fill** the `**Evaluation contract:**` block on every newly split story. This is an artifact contract authored by roll-design, consumed by builder (read before coding, map delivered evidence back) and evaluator (peer score prompt includes it, attest surfaces planned-vs-delivered). Genuinely trivial/internal stories may use a one-item minimal block, never omit it.
+> **MUST fill** the `**Evaluation contract:**` block on every newly split story. This is an artifact contract authored by roll-design as the Designer, consumed by Builder (read before coding, map delivered evidence back) and Evaluator (peer score prompt includes it, attest surfaces design-contract-vs-delivered). Genuinely trivial/internal stories may use a one-item minimal block, never omit it.
 
 **Spec frontmatter (visual-evidence contract — FIX-311):**
 - A web/visual card MUST declare the real product surface it delivers:
@@ -771,9 +771,9 @@ Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 >
 > **MUST fill** the `**Agent profile:**` block on every newly split US. `est_min` is the **sole loop-routing input** — `lib/loop_pick_agent.py` maps it onto a four-slot complexity tier (easy/default/hard/fallback) on the est_min axis alone (missing/illegal → default). Fill `risk_zone` too, but note it does NOT feed routing; it only informs the roll-build / roll-fix pre-flight self-eval (US-AGENT-007).
 
-> **强制规则 — Evaluation contract 必须填（US-SKILL-030）**：每张新 story spec 都必须包含 `**Evaluation contract:**` 块，明确列出 `expected_evidence`（每项 kind/target/proves 三字段）和 `scorer_focus`（peer scorer 评分口径）。纯内部/无可见面的 trivial story 可使用 one-item 最小块，但不可省略。该块由 planner（`roll-design`）撰写，供 builder 和 evaluator 作为共享证据契约消费，不触发三 agent 协同会话。
+> **强制规则 — Evaluation contract 必须填（US-SKILL-030）**：每张新 story spec 都必须包含 `**Evaluation contract:**` 块，明确列出 `expected_evidence`（每项 kind/target/proves 三字段）和 `scorer_focus`（peer scorer 评分口径）。纯内部/无可见面的 trivial story 可使用 one-item 最小块，但不可省略。该块由 Designer（`roll-design`）撰写，供 Builder 和 Evaluator 作为共享证据契约消费，不触发三 agent 协同会话。
 
-> **Evaluation contract is required (US-SKILL-030)**: every newly split story spec MUST carry an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus` (scorer rubric). Genuinely trivial/internal stories may use a one-item minimal block but must not omit the section entirely. This block is authored by the planner (`roll-design`) and consumed as a shared artifact contract by builder (`roll-build`/`roll-fix`) and evaluator (peer scorer, attest gate) — no three-agent chat pipeline is introduced.
+> **Evaluation contract is required (US-SKILL-030)**: every newly split story spec MUST carry an `**Evaluation contract:**` block with `expected_evidence` (each item: `kind`, `target`, `proves`) and `scorer_focus` (scorer rubric). Genuinely trivial/internal stories may use a one-item minimal block but must not omit the section entirely. This block is authored by the Designer (`roll-design`) and consumed as a shared artifact contract by Builder (`roll-build`/`roll-fix`) and Evaluator (peer scorer, attest gate) — no three-agent chat pipeline is introduced.
 >
 > **Block template:**
 > ```markdown
@@ -876,7 +876,7 @@ emits no quality score; the agent just delivers the split + specs and stops.
 A design has **no executable pass/fail test** — correctness is judgment. So it is
 the canonical **3-stage loop**, and naming the stages keeps the roles honest:
 
-- **Planner / Builder = this design session.** Besides the split + specs, it must
+- **Designer = this design session.** Besides the split + specs, it must
   emit **explicit evaluation criteria for the design itself** — the prose
   equivalent of a test contract: what would make this design wrong or incomplete
   (e.g. "every Bounded Context boundary is justified", "the worked sample covers
@@ -887,7 +887,8 @@ the canonical **3-stage loop**, and naming the stages keeps the roles honest:
   criteria, and **must not be seeded with the designer's reasoning** (roll-peer's
   Independent Judgment Rule already enforces exactly this — see the two
   `[peer]` checkpoints in the Workflow: Direction Review and Plan Review). A
-  fresh same-vendor session is the minimum; a different agent+model is encouraged.
+  fresh same-vendor session is the minimum; a different agent+model is a ranking
+  preference unless the owner explicitly requested strict diversity.
 
 Until the runner's FIX-344 stage lands, the isolated Evaluator is the
 `$roll-peer` Plan Review checkpoint, not an automated score — but the criteria

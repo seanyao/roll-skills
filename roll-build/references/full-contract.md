@@ -117,7 +117,7 @@ the command decides. The cap exists purely to stop infinite split chains.
 1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<epic>/<story>/spec.md`
 2. Read the full AC / Files / Dependencies section
 3. If a plan doc (`<feature>-plan.md`) exists, read it for context
-4. **Read the Evaluation contract (US-SKILL-030)**: if the spec contains an `**Evaluation contract:**` block, read `expected_evidence` and `scorer_focus` before writing any code. This is the planner's artifact contract — use it to inform test design and evidence planning. Map each `expected_evidence` item to a planned Action or test; if an item is impossible given the actual scope, note the deviation in your report/ac-map. `builder_notes` carry planner hints — treat them as bounded guidance, not hidden requirements.
+4. **Read the Evaluation contract (US-SKILL-030)**: if the spec contains an `**Evaluation contract:**` block, read `expected_evidence` and `scorer_focus` before writing any code. This is the Designer's artifact contract — use it to inform test design and evidence planning. Map each `expected_evidence` item to a candidate Action or test; if an item is impossible given the actual scope, note the deviation in your report/ac-map. `builder_notes` carry Designer hints — treat them as bounded guidance, not hidden requirements.
 
 ### Step A3: Split into Actions
 
@@ -190,11 +190,11 @@ Before defining the verification, classify **each Action** on one axis:
 ```
 Action acceptance
   ├── YES (deterministic) → objective 4-stage loop  ← DEFAULT
-  │      Planner (AC/contract) → Tester (Phase 2 + write RED)
+  │      Designer/AC contract → Tester (Phase 2 + write RED)
   │      → Builder (Phase 3 TCR) → Evaluator (Phase 6, incl. Agent 4 test audit)
   │
   └── NO (judgment-dependent) → subjective 3-stage loop
-         Planner emits EXPLICIT evaluation criteria up front
+         Designer emits EXPLICIT evaluation criteria up front
          → Builder produces the output
          → an ISOLATED Evaluator scores the output against those criteria
 ```
@@ -542,7 +542,7 @@ Agent 3: Efficiency Review            (receives: full diff)
 Agent 4: Test Adequacy Review         (receives: AC/contract + test files ONLY)
   → Audit the TESTS, not the implementation. This agent does NOT receive
      the implementation diff or any builder reasoning — only (a) the Story's
-     AC / interface contract (the Planner artifact) and (b) the test files.
+     AC / interface contract (the Designer artifact) and (b) the test files.
   → AC ↔ assertion coverage: every AC has at least one test that would fail
      if that AC regressed. Flag any AC with no corresponding assertion.
   → Tautological / vacuous assertions: tests that only assert "did not throw",
@@ -720,7 +720,7 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
    ] }]
 ```
 
-   **Cross-reference with the Evaluation contract** (when present): each `expected_evidence` item in the contract maps to an AC via its `proves` field. When writing ac-map entries, ensure every `expected_evidence` item is addressed — the attest gate later surfaces a planned-vs-delivered delta from this mapping (US-SKILL-030).
+   **Cross-reference with the Evaluation contract** (when present): each `expected_evidence` item in the contract maps to an AC via its `proves` field. When writing ac-map entries, ensure every `expected_evidence` item is addressed — the attest gate later surfaces a design-contract-vs-delivered delta from this mapping (US-SKILL-030).
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
 3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + Review Score).
 4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
@@ -931,9 +931,10 @@ Reviewer that mints the Review Score (1..10 + verdict + rationale), recorded
 with `scoredBy` and the fresh-session id so independence is verifiable.
 
 Independence is about session/context, not vendor: a fresh same-vendor session
-is the minimum acceptable; a different agent+model+session (non-sub-agent) is
-encouraged (absolute heterogeneity). A score sharing the builder's session
-(including any sub-agent of it) is rejected as a self-score.
+is the minimum acceptable; a different agent+model+session (non-sub-agent) is a
+ranking preference unless the owner explicitly requested strict diversity. A
+score sharing the builder's session (including any sub-agent of it) is rejected
+as a self-score.
 
 Score guidance the Reviewer applies (integer 1..10):
 - **9..10** — story shipped cleanly: AC fully met, TCR rhythm tight, no
@@ -963,11 +964,13 @@ GAPS: <gap one; gap two; gap three>
 ```
 
 On a RESIZE signal (low score), the loop runs `roll loop review-resize <story>`:
-`$roll-design` mints sub-stories from the gaps, ≥2 **heterogeneous** reviewers
-gate the split by consensus (all agree → auto-land via `roll loop self-downgrade`,
-which parks the parent at 🚫 Hold + appends the sub-stories; any objection →
-pause + ALERT, backlog unchanged), and the chain-depth cap (US-AGENT-009) stops
-runaway splits. The human is **on** the loop (alerted only on consensus failure
+`$roll-design` mints sub-stories from the gaps, and ≥2 fresh-session reviewers
+gate the split by consensus. Prefer diverse agents/models when available, but do
+not block solely on matching brand/provider unless the owner requested strict
+diversity. When all agree, auto-land via `roll loop self-downgrade`, which parks
+the parent at 🚫 Hold + appends the sub-stories; any objection → pause + ALERT,
+backlog unchanged. The chain-depth cap (US-AGENT-009) stops runaway splits. The
+human is **on** the loop (alerted only on consensus failure
 or the cap), not in it. A RESIZE is never emitted for a pure quality problem.
 
 ---
