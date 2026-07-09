@@ -975,6 +975,62 @@ or the cap), not in it. A RESIZE is never emitted for a pure quality problem.
 
 ---
 
+## Construction-time independence & shift-left evidence (US-SKILL-031/032/033)
+
+The Review Score (FIX-343) and Phase 6 Agent 4 add independence *downstream* of a
+single builder that wrote BOTH the tests and the implementation. These three
+gates add independence and evidence freshness *during* construction. They were
+distilled from the US-EVID-026 delivery retro.
+
+### US-SKILL-031 — Adversarial pairing mode (verified / designed profiles)
+
+Under the `verified` and `designed` execution profiles, the **test author and the
+implementer are DIFFERENT, heterogeneous agents** — the agent that makes a test
+pass is never the one that wrote it, so tests and implementation cannot be
+co-shaped to be mutually flattering. The loop is:
+
+1. Test author writes a RED test for the next micro-step.
+2. Implementer (a different agent) writes ONLY production code to turn it green;
+   it must not edit the test.
+3. **Attack round** — once green, the test author writes ≥1 *breaking* test
+   targeting an untested failure mode; the implementer fixes; repeat until the
+   attacker is dry (N consecutive rounds surface no new hole).
+4. The attacker's breaking tests are added to the Phase 6 **Agent 4** test-audit
+   input, so "these failure modes are now pinned" is auditable.
+
+Cost: this approximately 2–3× the agent calls, so it is **bound to `verified` /
+`designed`** (high-stakes cards). `standard` keeps the single-builder + downstream
+audit unchanged. The profile choice is recorded (which was picked, and why).
+Independence is by session/context, not vendor (same FIX-343 red line): the
+test-author session must not be the implementer's session or a sub-agent of it.
+
+### US-SKILL-032 — Independent heterogeneous code review
+
+Phase 6's code review is performed by a **randomly-picked independent
+heterogeneous agent** (e.g. pi / kimi), NOT a sub-agent of the builder's session,
+and it emits a **structured verdict** — PASS/FAIL per AC plus a blocking-issue
+list — recorded with `reviewedBy` + session id so independence is verifiable (the
+same `scoredBy` contract as the Review Score). Independence is by session/context,
+not vendor. If no heterogeneous agent is available, fall back to `$roll-.review
+staged`, but **record the independence degradation explicitly** — never silently
+present a self-review as independent. This never becomes a hard block; its output
+feeds the existing fix-and-recheck loop.
+
+### US-SKILL-033 — Shift-left per-AC evidence
+
+Each AC's evidence is captured **at the moment that AC's TCR turns green** — fresh
+and bound to the micro-step — not batched at Phase 11. Phase 11 therefore
+DOWNGRADES from "collect evidence" to "**summarize already-captured evidence +
+generate the ac-map + render the report**"; an AC that reaches Phase 11 with no
+captured evidence is a **red flag** (its TCR never captured), not an invitation to
+now-collect. This is fully consistent with FIX-329 ("attest is earned during
+delivery, never backfilled") — it only moves the earning point earlier, from
+Phase 11 to the per-AC micro-step. Captured-artifact binding stays harness-owned
+(US-EVID-023); this governs the *timing* of non-captured evidence (command output,
+named tests).
+
+---
+
 ## TCR Recovery Patterns
 
 ### Pattern 1: Red After Multiple Attempts
