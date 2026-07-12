@@ -58,3 +58,5 @@ same TCR, evidence, Evaluator, and release gates apply in both modes.
 ## Role in v4 execution profiles
 
 **roll-build is the Builder capability in every execution profile** (`standard` / `verified` / `designed`). Under `designed` it receives the Designer's `design-contract.md` via artifact refs (no shared raw session). Under `verified`/`designed` an independent **Evaluator** (a fresh session) judges the delivery and may open a BOUNDED repair round — you address the blocking findings and write a repair note mapping findings → changes. `standard` is Builder-only. Roles: Supervisor / Designer / Builder / Evaluator.
+
+Under `verified`/`designed` the Builder step itself is the **engine-orchestrated adversarial pair** (US-LOOP-100..106, dormant until `execution_policy.mode` opts in): the loop spawns a heterogeneous test_author ≠ implementer and drives attack rounds, with deterministic never-hang termination, fail-closed degrade to a single builder (`adversarial:degraded`), and a `roll loop adversarial` shadow-run aggregate. See references/full-contract.md § US-SKILL-031.

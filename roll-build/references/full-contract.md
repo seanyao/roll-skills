@@ -987,7 +987,9 @@ distilled from the US-EVID-026 delivery retro.
 Under the `verified` and `designed` execution profiles, the **test author and the
 implementer are DIFFERENT, heterogeneous agents** — the agent that makes a test
 pass is never the one that wrote it, so tests and implementation cannot be
-co-shaped to be mutually flattering. The loop is:
+co-shaped to be mutually flattering. **This is now orchestrated by the loop engine
+itself** (US-LOOP-100..106), not left to builder self-discipline — the runner
+spawns the roles and drives the rounds:
 
 1. Test author writes a RED test for the next micro-step.
 2. Implementer (a different agent) writes ONLY production code to turn it green;
@@ -998,11 +1000,33 @@ co-shaped to be mutually flattering. The loop is:
 4. The attacker's breaking tests are added to the Phase 6 **Agent 4** test-audit
    input, so "these failure modes are now pinned" is auditable.
 
+How the engine runs it (all in `@roll/core` + the CLI runner, not a prose
+convention):
+
+- **Sequencing** — the orchestrator's execute phase emits a `spawn_role`
+  subsequence (`test_author → implementer → attack rounds`) instead of a single
+  `spawn_agent`, driven by the pure `adversarialNextStep` termination algorithm
+  (three independent stops — dry streak > max rounds > total timeout — so it can
+  **never hang unattended**). `standard` cycles still emit the single builder,
+  byte-unchanged.
+- **Fail-closed degrade** — any adversarial exception (no heterogeneous partner,
+  an unavailable agent, a hung round) routes through `adversarialDegradeDecision`
+  and falls back to a standard single builder that completes the card, emitting an
+  `adversarial:degraded` event — **never silent, never deadlock**. The role spawns
+  carry the same main-checkout write-protection as the builder.
+- **Observability** — each cycle's outcome (`rounds / holesFound /
+  terminationReason / degraded`) is folded onto the runs row, and
+  `roll loop adversarial` prints the read-only shadow-run aggregate (adversarial
+  vs standard cohort, avg holes, degrade rate) so profile expansion is a
+  data-backed decision (design §9), not a guess.
+
 Cost: this approximately 2–3× the agent calls, so it is **bound to `verified` /
 `designed`** (high-stakes cards). `standard` keeps the single-builder + downstream
 audit unchanged. The profile choice is recorded (which was picked, and why).
 Independence is by session/context, not vendor (same FIX-343 red line): the
 test-author session must not be the implementer's session or a sub-agent of it.
+The adversarial path is **dormant until a project opts into the verified/designed
+execution profile** (`execution_policy.mode`); a standard-mode project is unaffected.
 
 ### US-SKILL-032 — Independent heterogeneous code review
 
