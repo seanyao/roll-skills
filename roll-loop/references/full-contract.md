@@ -301,14 +301,18 @@ After each item completes:
 
    **Path B — heal exhausted (≥`ROLL_LOOP_HEAL_MAX`, default 2) or disabled (`ROLL_LOOP_NO_HEAL=1`) (exit 1):**
 
-   1. Do NOT force ✅ Done here. CI red means the PR will not merge. Under
-      **US-AUTO-044** the main loop no longer waits for merge — it publishes the
-      PR and exits; the dedicated PR Loop (`com.roll.pr.<slug>`, every 5 min)
-      merges / rebases / closes it asynchronously. There is no false-Done risk:
+   1. Do NOT force ✅ Done here. CI red means the PR will not merge. The main
+      loop never waits for merge — it publishes the PR, records
+      `awaiting_merge`, and exits; the **Delivery Reconciler**
+      (US-DELIV-001..007, no daemon — the `com.roll.pr.<slug>` PR Loop is
+      retired) advances it opportunistically on cycle boundaries and on
+      `roll loop reconcile`: self-drive merge (`gh pr merge --squash`) once CI
+      turns green, then reconcile to `delivered` / `delivered_external` from
+      `main` (L1 PR-state / L2 patch-id). There is no false-Done risk:
       with worktree isolation the ✅ Done lives only in the unmerged PR, never on
       the loop's main checkout, and the story is not re-picked meanwhile via the
-      open-PR eligibility gate (FIX-146). The story's
-      ✅ Done lands on main only when the PR Loop actually merges the PR.
+      open-PR eligibility gate (FIX-146) / `deliveryLease`. The story's
+      ✅ Done lands on main only when the reconciler confirms the merge.
    2. Write ALERT to `~/.shared/roll/loop/ALERT-<slug>.md` with:
       - story ID, time, commit SHA
       - heal attempts made (read `heal_count:` from `state-<slug>.yaml`)

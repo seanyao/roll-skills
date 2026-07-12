@@ -43,6 +43,7 @@ same TCR, evidence, Evaluator, and release gates apply in both modes.
 - In the test-gated loop the tests are the weakest link: an isolated Test Adequacy reviewer (Phase 6 Agent 4) audits the tests against the AC, seeing only AC + test files — never the implementation diff or builder reasoning. Self-review of one's own tests (Phase 2) is necessary but not isolation.
 - Self-review, attest, and E2E evidence remain required. The Review Score is produced by the runner's fresh-session peer Reviewer — the agent does NOT self-score.
 - Docs/code/product alignment is a DoD gate: user-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery.
+- Done ≡ merged to `main`. After publish the cycle is `awaiting_merge`; the Delivery Reconciler (no daemon) self-drives the merge and reconciles truth from `main` — manual merges are first-class (`delivered_external`). Never pre-flip a card to Done on an open PR.
 
 ## Gotchas
 

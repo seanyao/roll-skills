@@ -38,6 +38,14 @@ bypasses pause, budget, route, evidence, Evaluator, or release gates.
 4. Persist events, runs, alerts, and status.
 5. Pause on repeated failure.
 
+## Delivery Lifecycle (US-DELIV-001..007)
+
+最后一公里 = 一个 reconcile 闭环，无独立守护进程（`com.roll.pr.<slug>` PR Loop 已退役）。
+
+- A cycle ends at publish: branch pushed + PR opened → `awaiting_merge`; the loop is released to pick the next card. Nothing blocks on merge.
+- The **Delivery Reconciler** advances delivery opportunistically — cycle boundaries, read paths, and explicit `roll loop reconcile`: CI-green PRs are merged self-drive (`gh pr merge --squash`); merged PRs reconcile from `main` (L1 PR-state / L2 patch-id) to `delivered`; external / manual merges reconcile to `delivered_external` (first-class); insufficient evidence stays `awaiting_merge` — never misjudge.
+- Reconcile is idempotent and crash-safe: any single `roll` invocation can advance the truth.
+
 ## Hard Gates
 
 - Loop never cuts a release autonomously.

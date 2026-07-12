@@ -750,17 +750,21 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
 
 **Done ≡ merged (FIX-322/323).** A card is `✅ Done` only once its delivery is
 **merged to `main`** — not when the branch is pushed and not while the PR is
-merely open. `published_pending_merge` (pushed / PR open, awaiting merge) is
-**not** delivered. Consequences you can rely on:
+merely open. `awaiting_merge` (pushed / PR open, awaiting merge) is **not**
+delivered. Consequences you can rely on:
 
-- The picker **skips** any card that already has a merged delivery, so a card
-  reset to 📋 Todo after merge is not re-picked and re-built.
-- Preflight reconciles truth from the PR: a 🔨 In Progress card whose PR has
-  **MERGED** is flipped to ✅ Done automatically (an OPEN PR is left alone).
+- The picker **skips** any card that already has a merged delivery (one card,
+  one `deliveryLease`), so a card reset to 📋 Todo after merge is not re-picked
+  and re-built.
+- Truth reconciles from `main`: the **Delivery Reconciler** (US-DELIV-001..007,
+  no daemon — the `com.roll.pr.<slug>` PR Loop is retired) confirms merges via
+  PR-state (L1) / patch-id (L2) and flips the cycle to `delivered` — manual /
+  external merges included (`delivered_external` is first-class).
 
 So on the manual path, flip the row to Done **after** the PR merges; under
-`roll-loop` the runner waits for green CI, auto-merges, and the flip follows the
-merge — do not pre-flip on a still-open PR.
+`roll-loop` the cycle ends at publish (`awaiting_merge`) and the reconciler
+self-drives the merge (`gh pr merge --squash` on green CI) and flips the row
+once the merge lands on `main` — do not pre-flip on a still-open PR.
 
 Both locations must be updated — neither can be skipped:
 
@@ -863,10 +867,11 @@ Before creating any file or directory:
    Work is not complete until it reaches:
    commit → push → CI signal → **PR merged to main** → deploy → online
    verification → backlog update.
-   A pushed branch or an open PR is `published_pending_merge`, NOT delivered;
-   the row flips to `✅ Done` only after the merge. Truth reconciles from the
-   PR: the picker skips already-merged cards and preflight flips a MERGED PR's
-   card to Done.
+   A pushed branch or an open PR is `awaiting_merge`, NOT delivered;
+   the row flips to `✅ Done` only after the merge. Truth reconciles from
+   `main`: the Delivery Reconciler confirms merges via PR-state / patch-id
+   (manual merges included → `delivered_external`) and the picker skips
+   already-merged cards.
 
 2. **TCR for every micro-step**
    - Each behavior change: Test → Green=Commit / Red=Revert
