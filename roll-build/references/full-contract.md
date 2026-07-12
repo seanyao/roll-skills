@@ -997,8 +997,11 @@ spawns the roles and drives the rounds:
 3. **Attack round** — once green, the test author writes ≥1 *breaking* test
    targeting an untested failure mode; the implementer fixes; repeat until the
    attacker is dry (N consecutive rounds surface no new hole).
-4. The attacker's breaking tests are added to the Phase 6 **Agent 4** test-audit
-   input, so "these failure modes are now pinned" is auditable.
+4. The attacker's breaking tests are committed to the branch as real test files,
+   so Phase 6 **Agent 4** audits them as part of the suite — "these failure modes
+   are now pinned" is auditable via the tests themselves. (The engine tracks the
+   attack-test paths in-cycle for the round bookkeeping; it does not forward them
+   as a separate persisted data channel.)
 
 How the engine runs it (all in `@roll/core` + the CLI runner, not a prose
 convention):
@@ -1006,8 +1009,9 @@ convention):
 - **Sequencing** — the orchestrator's execute phase emits a `spawn_role`
   subsequence (`test_author → implementer → attack rounds`) instead of a single
   `spawn_agent`, driven by the pure `adversarialNextStep` termination algorithm
-  (three independent stops — dry streak > max rounds > total timeout — so it can
-  **never hang unattended**). `standard` cycles still emit the single builder,
+  (three independent stops, checked in precedence order total-timeout → max-rounds
+  → dry-streak; any one halts the loop, so it can **never hang unattended**).
+  `standard` cycles still emit the single builder,
   byte-unchanged.
 - **Fail-closed degrade** — any adversarial exception (no heterogeneous partner,
   an unavailable agent, a hung round) routes through `adversarialDegradeDecision`
