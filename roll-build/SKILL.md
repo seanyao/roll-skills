@@ -34,7 +34,7 @@ same TCR, evidence, Evaluator, and release gates apply in both modes.
 2. Read backlog/spec and decide if the story fits one cycle.
 3. Split into small TCR actions; per Action route objective work to the 4-stage TCR loop and judgment-dependent work to a 3-stage criteria+Evaluator loop, then define verification.
 4. Run test-first implementation, self-review, evidence, and write-back.
-5. Commit on green, open PR, and leave remote evidence.
+5. Commit green TCR work, then hand off publishing and remote evidence to the Runner.
 
 ## Hard Gates
 
@@ -42,6 +42,7 @@ same TCR, evidence, Evaluator, and release gates apply in both modes.
 - No WIP commits or bypassed verification.
 - In the test-gated loop the tests are the weakest link: an isolated Test Adequacy reviewer (Phase 6 Agent 4) audits the tests against the AC, seeing only AC + test files — never the implementation diff or builder reasoning. Self-review of one's own tests (Phase 2) is necessary but not isolation.
 - Self-review, attest, and E2E evidence remain required. The Review Score is produced by the runner's fresh-session peer Reviewer — the agent does NOT self-score.
+- Inside a `roll-loop` cycle, never run `git push` or `gh pr create`; the Runner owns branch publication and PR creation after the gates pass.
 - Docs/code/product alignment is a DoD gate: user-visible behavior, command, output-copy, site, or delivery-view changes update the touched README/docs/guide/site/help in the same delivery.
 - Done ≡ merged to `main`. After publish the cycle is `awaiting_merge`; the Delivery Reconciler (no daemon) self-drives the merge and reconciles truth from `main` — manual merges are first-class (`delivered_external`). Never pre-flip a card to Done on an open PR.
 
