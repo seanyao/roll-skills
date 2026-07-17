@@ -579,15 +579,17 @@ the full diff as a single-pass fallback — do not skip review entirely.
 🟢 Suggestions / ✅ All clear → Proceed to Phase 7
 ```
 
-### Phase 7: Commit & Push (branch + PR — NEVER direct to main)
+### Phase 7: Commit & Publish Handoff
 
-`main` is PR-protected. Push the worktree's branch and open a PR — never
-`git push origin main`. (When invoked by `roll-loop`, the runner already
-created the worktree + branch and opens the PR; this is the manual-path
-equivalent.)
+`main` is PR-protected. In a standalone guided session, push the worktree's
+branch and open a PR — never `git push origin main`. Inside a `roll-loop`
+cycle, stop after the green commits and evidence: the Runner publishes the
+branch and opens the PR after its gates pass. Do not run `git push` or
+`gh pr create` inside the Builder session.
 
 ```bash
-# All TCR micro-commits are already made on the worktree's branch (step A3.1).
+# Standalone guided session only. All TCR micro-commits are already made on
+# the worktree's branch (step A3.1).
 git log --oneline -{n}                 # Review TCR commits
 git push -u origin <branch>            # the dispatch/<id> branch from step A3.1
 gh pr create --title "{story-id}: …" --body "…"
@@ -761,12 +763,13 @@ delivered. Consequences you can rely on:
   PR-state (L1) / patch-id (L2) and flips the cycle to `delivered` — manual /
   external merges included (`delivered_external` is first-class).
 
-So on the manual path, flip the row to Done **after** the PR merges; under
-`roll-loop` the cycle ends at publish (`awaiting_merge`) and the reconciler
+So on the manual path, flip the row to Done **after** the PR merges. Under
+`roll-loop`, the Builder must not edit shared `.roll` completion status at
+all: the cycle ends at publish (`awaiting_merge`) and the reconciler
 self-drives the merge (`gh pr merge --squash` on green CI) and flips the row
 once the merge lands on `main` — do not pre-flip on a still-open PR.
 
-Both locations must be updated — neither can be skipped:
+On the manual path, both locations must be updated — neither can be skipped:
 
 **① Update .roll/backlog.md index row (Status column):**
 
@@ -777,7 +780,7 @@ Both locations must be updated — neither can be skipped:
 | [US-{ID}](.roll/features/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/US-{ID}/latest/US-{ID}-report.html) |
 ```
 
-Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state, and the transition is the same Edit operation.
+Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`.
 For Fly mode: first append an index row under the appropriate Epic > Feature group, then mark it done.
 
 **② Update `.roll/features/<epic>/<story>/spec.md`:**
@@ -804,7 +807,9 @@ For Fly mode: first append an index row under the appropriate Epic > Feature gro
 If the US section does not yet exist, create the full section (AC / Files / Dependencies).
 
 **Before committing, run `$roll-.changelog`** to stage CHANGELOG.md — then include
-it in the completion commit so no separate changelog commit is created.
+it in the completion commit so no separate changelog commit is created. This
+manual-path section does not apply inside `roll-loop`; its Runner owns
+metadata reconciliation after merge.
 
 ```bash
 # 1. Stage changelog (roll-.changelog stages CHANGELOG.md only, does not commit)
@@ -857,11 +862,10 @@ Before creating any file or directory:
 0. **Worktree-first, PR-at-end (ALWAYS)**
    Before writing any code, work in a dedicated git worktree on its own
    branch (`git worktree add ../wt-<id> -b <branch>`), never in the shared
-   checkout — so concurrent cycles / sessions never collide. Finish by
-   pushing the branch and opening a PR; `main` is PR-protected — NEVER
-   `git push origin main`. (Under `roll-loop` the runner creates the
-   worktree + branch and opens the PR; this rule is the manual-path
-   equivalent and must hold either way.)
+   checkout — so concurrent cycles / sessions never collide. In a standalone
+   session, finish by pushing the branch and opening a PR; `main` is
+   PR-protected — NEVER `git push origin main`. Under `roll-loop`, finish
+   green commits and evidence only: the Runner creates the PR.
 
 1. **No local-only "done" — Done ≡ merged (FIX-322/323)**
    Work is not complete until it reaches:
