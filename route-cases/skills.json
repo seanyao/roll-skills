@@ -71,6 +71,16 @@
         "fix FIX-123 as a narrow bug repair"
       ]
     },
+    "roll-ws-init": {
+      "positive": [
+        "preview and initialize a new Roll Workspace from repository bindings",
+        "retry a failed roll workspace init using its repair journal"
+      ],
+      "negative": [
+        "create Story repository worktrees inside an existing Workspace",
+        "manually scaffold Workspace directories after the CLI rejects a config"
+      ]
+    },
     "roll-debug": {
       "positive": [
         "mount a browser black-box probe on localhost to diagnose a broken page",

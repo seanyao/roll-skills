@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roll Workspace Init"
+  short_description: "Plan and initialize a complete Roll Workspace"
+  default_prompt: "Use $roll-ws-init to preview and initialize a Roll Workspace from a versioned config."
