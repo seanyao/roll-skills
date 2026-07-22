@@ -73,12 +73,14 @@
     },
     "roll-ws-init": {
       "positive": [
-        "preview and initialize a new Roll Workspace from repository bindings",
+        "preview and initialize a multi-repository Roll Workspace from versioned bindings",
         "retry a failed roll workspace init using its repair journal"
       ],
       "negative": [
         "create Story repository worktrees inside an existing Workspace",
-        "manually scaffold Workspace directories after the CLI rejects a config"
+        "manually scaffold Workspace directories after the CLI rejects a config",
+        "migrate a historical repository-local Roll project into Workspace scope",
+        "activate pause or archive an already registered Workspace"
       ]
     },
     "roll-debug": {

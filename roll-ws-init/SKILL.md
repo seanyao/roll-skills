@@ -8,6 +8,10 @@ description: Load when an operator wants to preview Workspace paths and reposito
 Collect intent, write one `roll.workspace-init/v1` config, and delegate every
 filesystem, registry, cache, and Git mutation to the CLI.
 
+Initialization creates Workspace authorities and repository bindings; it does not activate the Workspace.
+Use `roll workspace issue init` after initialization for Story repository worktrees.
+Use `roll workspace migrate` for a historical repository-local Roll project.
+
 ## Workflow
 
 1. Collect the Workspace ID, root, display name, requirement references, and
@@ -48,6 +52,10 @@ filesystem, registry, cache, and Git mutation to the CLI.
 
 6. Re-run the same command after an interrupted apply. Let the CLI read its
    repair journal and decide what is safe to repair or preserve.
+7. Report the initialized Workspace ID and root. If the operator also requested
+   lifecycle activation, hand that separate action back to `roll workspace
+   activate <id|path>` after initialization has completed; do not fold it into
+   this skill's shell blocks.
 
 ## Hard Boundaries
 
@@ -60,6 +68,12 @@ filesystem, registry, cache, and Git mutation to the CLI.
 - Never fall back to hand-written layout creation when the CLI rejects or fails.
 - Never create a persistent product checkout inside the Workspace. Product code
   worktrees belong to later Issue initialization.
+- Never create or repair Story worktrees; that belongs to `roll workspace issue
+  init` after the Workspace exists.
+- Never migrate a repository-local `.roll`; historical conversion belongs to
+  `roll workspace migrate --check` plus its reviewed apply transaction.
+- Never activate, pause, or archive a Workspace as an implicit consequence of
+  initialization.
 - Treat `--check` as the only preview contract; it must remain side-effect free.
 
 ## Recovery
@@ -75,3 +89,5 @@ force success.
 - A successful `--check` is still read-only; run apply only when initialization
   was requested.
 - A reusable machine bare cache is not a Workspace product checkout.
+- Multiple Workspaces may be active. Init creates one explicit target and does
+  not select a global current Workspace.
