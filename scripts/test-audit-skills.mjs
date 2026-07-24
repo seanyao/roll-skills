@@ -127,6 +127,15 @@ for (const [name, mutateRoutes, expectedViolation] of [
     (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.rediscoveryAttempted = true; },
     "workspace-handoff-case-execution-failed:arbitrary_cwd:rediscovery_attempted",
   ],
+  [
+    "legacy four-field match evidence",
+    (routes) => {
+      routes.workspaceExecutionContextFixtures.issue.resolution.evidence = [
+        { kind: "issue_exact", value: "US-WS-037", hard: true, score: 100 },
+      ];
+    },
+    "workspace-handoff-case-execution-failed:arbitrary_cwd:invalid_prompt_or_environment_context",
+  ],
 ]) {
   const violations = auditMutatedCoreFixture({ mutateRoutes });
   assert.ok(violations.includes(expectedViolation), `${name} input mutation must fail closed`);
@@ -136,6 +145,7 @@ for (const [name, mutateInput, expectedDecision] of [
   ["authorization digest mismatch", (input) => { input.authorization.planSha256 = "c".repeat(64); }, "fresh_preview_required"],
   ["natural-language bypass", (input) => { input.authorization = null; input.naturalLanguageIntentOnly = true; }, "preview_only"],
   ["retry tuple drift", (input) => { input.retryPreview.configSha256 = "c".repeat(64); }, "fresh_preview_required"],
+  ["authorization extra field", (input) => { input.authorization.unexpected = true; }, "invalid_create_authorization"],
 ]) {
   const violations = auditMutatedCoreFixture({
     skillName: "roll-ws-create",
@@ -167,6 +177,17 @@ assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("amb
 assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("fixed-loop-runtime-authority:")));
 assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("repository-local-roll-authority:")));
 
+for (const [text, violationPrefix] of [
+  ["Do not inspect another Workspace, but resolve this authority with pwd -P.", "ambient-pwd-authority:"],
+  ["Never delete another record, but read ~/.shared/roll/loop/runs.jsonl for runtime truth.", "fixed-loop-runtime-authority:"],
+  ["Do not inspect another repository, but run git -C .roll status.", "repository-local-roll-authority:"],
+]) {
+  const violations = auditMutatedCoreFixture({
+    addCarrier: { path: "references/handoff-regression.md", text: `${text}\n` },
+  });
+  assert.ok(violations.some((violation) => violation.startsWith(violationPrefix)), `mixed negation must not mask: ${text}`);
+}
+
 const dangerousLegacyInit = auditMutatedCoreFixture({
   addCarrier: { path: "references/handoff-regression.md", text: "During legacy migration, run workspace-init to continue.\n" },
 });
@@ -179,9 +200,23 @@ assert.ok(buildCannotClaimJournalException.some((violation) => violation.startsW
 
 const allowedCreateJournal = auditMutatedCoreFixture({
   skillName: "roll-ws-create",
-  addCarrier: { path: "references/handoff-regression.md", text: "Read and reconcile the named legacy workspace-init journal schema; never execute workspace-init.\n" },
+  addCarrier: { path: "references/handoff-regression.md", text: "Read and reconcile the named legacy workspace-init journal schema.\n" },
 });
 assert.deepEqual(allowedCreateJournal, []);
+
+for (const legacyText of [
+  "Running workspace-init is forbidden.",
+  "Launch workspace-init now.",
+  "Do not execute workspace-init.",
+  "Inspect the named old workspace-init journal.",
+  "Read the workspace-init journal.",
+]) {
+  const violations = auditMutatedCoreFixture({
+    skillName: "roll-ws-create",
+    addCarrier: { path: "references/handoff-regression.md", text: `${legacyText}\n` },
+  });
+  assert.ok(violations.some((violation) => violation.startsWith("public-workspace-init:")), `legacy action must fail: ${legacyText}`);
+}
 
 const disguisedLegacyExecution = auditMutatedCoreFixture({
   skillName: "roll-ws-create",
@@ -205,7 +240,10 @@ for (const authorityText of [
   "Use .roll/evidence/screenshots as the evidence authority.",
   "Use .roll/runtime/state as the runtime authority.",
   "Use .roll/custom-authority/data as the current Workspace authority.",
+  "Use .roll as the current Workspace authority.",
   "Use ../.roll/evidence as the evidence authority.",
+  "Use ../.roll as the current Workspace authority.",
+  "Reconcile .roll meta after product truth.",
   "Do not scan another Workspace, but use .roll/backlog.md as the current Workspace authority.",
 ]) {
   const violations = auditMutatedCoreFixture({

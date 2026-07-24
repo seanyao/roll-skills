@@ -78,6 +78,12 @@ test("all six core families execute the five Workspace handoff route proofs", ()
       assert.equal(Object.hasOwn(result.input.promptContext, "workspaceId"), false, "real context nests Workspace identity");
       assert.equal(Object.hasOwn(result.input.promptContext, "storyId"), false, "real context nests Issue identity");
       assert.equal(Object.hasOwn(result.input.promptContext, "scope"), false, "scope belongs to policy, not context JSON");
+      assert.ok(result.input.promptContext.resolution.evidence.length > 0, "real context must exercise non-empty match evidence");
+      for (const evidence of result.input.promptContext.resolution.evidence) {
+        assert.deepEqual(Object.keys(evidence).sort(), [
+          "detail", "hard", "kind", "provenance", "score", "source", "value",
+        ]);
+      }
     }
   }
 });
@@ -117,6 +123,14 @@ test("deterministic handoff evaluator fails closed on missing, conflict, multi-r
     ...arbitrary,
     environmentContext: "{",
   }).decision, "invalid_workspace_context");
+  const legacyFourFieldEvidence = structuredClone(arbitrary);
+  legacyFourFieldEvidence.promptContext.resolution.evidence = [
+    { kind: "requirement_source_exact", value: "jira:APE-234", hard: true, score: 100 },
+  ];
+  legacyFourFieldEvidence.environmentContext.resolution.evidence = structuredClone(
+    legacyFourFieldEvidence.promptContext.resolution.evidence,
+  );
+  assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", legacyFourFieldEvidence).decision, "invalid_workspace_context");
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
     promptContext: { schema: "roll.workspace-execution-context/v1", workspaceId: "roll", storyId: null, scope: "workspace_required_mutation" },
@@ -192,6 +206,10 @@ test("machine-only Workspace creation uses an explicit create handoff from arbit
     ...explicit,
     authorization: { ...explicit.authorization, planSha256: "c".repeat(64) },
   }).decision, "fresh_preview_required");
+  assert.equal(evaluateWorkspaceHandoffCase("roll-ws-create", "explicit_selector", {
+    ...explicit,
+    authorization: { ...explicit.authorization, unexpected: true },
+  }).decision, "invalid_create_authorization");
   assert.equal(evaluateWorkspaceHandoffCase("roll-ws-create", "explicit_selector", {
     ...explicit,
     authorization: null,
