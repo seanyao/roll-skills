@@ -242,32 +242,16 @@ function allowedLegacyJournalReference(skillName, line, initIndex) {
   );
 }
 
-function independentClauses(line) {
-  const clauses = [];
-  const separator = /[;!?。；！？]+|\.(?=\s|$)|\b(?:but|then|however|therefore|yet)\b/giu;
-  let start = 0;
-  for (const match of line.matchAll(separator)) {
-    if (match.index === undefined) continue;
-    if (match.index > start) clauses.push({ start, end: match.index, text: line.slice(start, match.index) });
-    start = match.index + match[0].length;
-  }
-  if (start < line.length) clauses.push({ start, end: line.length, text: line.slice(start) });
-  return clauses;
-}
-
-function occurrenceClause(line, targetIndex) {
-  return independentClauses(line).find(({ start, end }) => targetIndex >= start && targetIndex < end);
-}
-
-function authorityOccurrenceIsRejected(line, targetIndex) {
-  const clause = occurrenceClause(line, targetIndex);
-  if (clause === undefined) return false;
-  const localIndex = targetIndex - clause.start;
-  const prefix = clause.text.slice(0, localIndex).trim();
-  const suffix = clause.text.slice(localIndex).trim();
-  return /(?:^|\b)(?:never|must\s+(?:not|never)|do(?:es)?\s+not|forbid(?:s|den)?|prohibit(?:s|ed)?)\b/iu.test(prefix) ||
-    /\b(?:is|are)\s+(?:forbidden|prohibited|disallowed)\b/iu.test(suffix) ||
-    /\b(?:instead of|rather than)\s*$/iu.test(prefix);
+function authorityLineIsAllowed(line) {
+  const normalized = normalizedContractSentence(line);
+  const singleTarget = /(?:\$pwd|\$\{roll_main_project:-\$pwd\}|pwd -p|~\/\.shared\/roll\/loop\/[a-z0-9._/-]+|git -c \.roll status|(?:\.\.\/)?\.roll(?:\/[a-z0-9._/-]+)?)/u;
+  return [
+    /^never derive authority from the shell cwd, a repository root, or a nearby \.roll directory$/u,
+    /^do not rediscover from cwd or \.roll, activate a workspace, or (?:create one inside this skill|apply creation from the clarification answer)$/u,
+    /^never derive authority from a repository-local \.roll directory$/u,
+    /^under roll-loop, the builder must not edit shared \.roll completion status$/u,
+    new RegExp(`^(?:do not|never) derive authority from ${singleTarget.source}$`, "u"),
+  ].some((pattern) => pattern.test(normalized));
 }
 
 function staleAuthorityViolations(skillName, contractTexts) {
@@ -279,21 +263,21 @@ function staleAuthorityViolations(skillName, contractTexts) {
         if (stalePath.index === undefined) continue;
         const pathPrefix = line.slice(0, stalePath.index).match(/[^\s"'`()]*$/u)?.[0] ?? "";
         if (pathPrefix.startsWith("/") || pathPrefix.startsWith("~/")) continue;
-        if (!authorityOccurrenceIsRejected(line, stalePath.index)) {
+        if (!authorityLineIsAllowed(line)) {
           violations.push(`stale-workspace-authority:${location}`);
           break;
         }
       }
       const ambientPwd = line.match(/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD|\bpwd\s+-P\b/u);
-      if (ambientPwd?.index !== undefined && !authorityOccurrenceIsRejected(line, ambientPwd.index)) {
+      if (ambientPwd !== null && !authorityLineIsAllowed(line)) {
         violations.push(`ambient-pwd-authority:${location}`);
       }
       const fixedLoopRuntime = line.match(/~\/\.shared\/roll\/loop\//u);
-      if (fixedLoopRuntime?.index !== undefined && !authorityOccurrenceIsRejected(line, fixedLoopRuntime.index)) {
+      if (fixedLoopRuntime !== null && !authorityLineIsAllowed(line)) {
         violations.push(`fixed-loop-runtime-authority:${location}`);
       }
       const localRollGit = line.match(/git\s+-C\s+`?\.roll(?:\s|`|$)/iu);
-      if (localRollGit?.index !== undefined && !authorityOccurrenceIsRejected(line, localRollGit.index)) {
+      if (localRollGit !== null && !authorityLineIsAllowed(line)) {
         violations.push(`repository-local-roll-authority:${location}`);
       }
       let unsafePublicInit = false;

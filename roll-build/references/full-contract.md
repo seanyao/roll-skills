@@ -763,9 +763,9 @@ delivered. Consequences you can rely on:
   PR-state (L1) / patch-id (L2) and flips the cycle to `delivered` — manual /
   external merges included (`delivered_external` is first-class).
 
-So on the manual path, flip the row to Done **after** the PR merges. Under
-`roll-loop`, the Builder must not edit shared `.roll` completion status at
-all: the cycle ends at publish (`awaiting_merge`) and the reconciler
+So on the manual path, flip the row to Done **after** the PR merges.
+Under `roll-loop`, the Builder must not edit shared `.roll` completion status.
+The cycle ends at publish (`awaiting_merge`) and the reconciler
 self-drives the merge (`gh pr merge --squash` on green CI) and flips the row
 once the merge lands on `main` — do not pre-flip on a still-open PR.
 

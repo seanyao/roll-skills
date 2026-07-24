@@ -24,7 +24,8 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 - If a host supplies either a `Workspace Execution Context` prompt block or `ROLL_WORKSPACE_EXECUTION_CONTEXT`, it must supply both; the pair must be semantically identical `roll.workspace-execution-context/v1` JSON. A partial pair, invalid JSON, or identity/schema conflict means **STOP**, but absence of both is valid for this machine-only flow.
 - Preview runs only through `--check` and records the returned `workspaceId`, `configSha256`, and `planSha256`. Apply consumes `roll.workspace-create-apply-authorization/v1` only when those values are unchanged; natural-language `create_new` permits preview only, and broad statements of create intent are not sufficient to authorize apply.
 - When the create config declares multiple repositories, validate all config bindings in the preview. Creation does not select one Issue repository and does not reuse an Issue execution contract.
-- On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or apply creation from the clarification answer.
+- On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop.
+- Do not rediscover from cwd or `.roll`, activate a Workspace, or apply creation from the clarification answer.
 - Retry and continuation keep the same create identity and preview digests through authorization. Any config, identity, or plan change requires a fresh preview and authorization.
 - Read and reconcile the named old `workspace-init` journal schema.
 - Use only the CLI recovery path; never execute that historical command or treat repository-local layout as authority.
@@ -109,7 +110,8 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
   worktrees belong to later Issue initialization.
 - Never create or repair Story worktrees; that belongs to `roll workspace issue
   init` after the Workspace exists.
-- Never migrate a repository-local `.roll`; historical conversion belongs to
+- Never derive authority from a repository-local `.roll` directory.
+- Historical conversion belongs to
   `roll workspace migrate --check` plus its reviewed apply transaction.
 - Never activate, pause, or archive a Workspace as an implicit consequence of
   creation.
