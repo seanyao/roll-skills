@@ -14,12 +14,18 @@ export const CORE_WORKSPACE_HANDOFF_SKILLS = [
 ];
 
 const WORKSPACE_HANDOFF_TAXONOMY = {
-  arbitrary_cwd: new Set(["use_handoff_authorities", "use_explicit_create_handoff"]),
-  explicit_selector: new Set(["use_verified_explicit_identity"]),
-  requirement_mismatch: new Set(["stop_and_route_workspace_target"]),
-  multi_repo: new Set(["stop_without_repository_selector"]),
-  legacy_boundary: new Set(["legacy_migration_only", "legacy_journal_recovery_only"]),
+  arbitrary_cwd: "use_handoff_authorities",
+  explicit_selector: "use_verified_explicit_identity",
+  requirement_mismatch: "stop_and_route_workspace_target",
+  multi_repo: "stop_without_repository_selector",
+  legacy_boundary: "legacy_migration_only",
 };
+
+function expectedHandoffOutcome(skillName, taxonomy) {
+  if (skillName === "roll-ws-create" && taxonomy === "arbitrary_cwd") return "use_explicit_create_handoff";
+  if (skillName === "roll-ws-create" && taxonomy === "legacy_boundary") return "legacy_journal_recovery_only";
+  return WORKSPACE_HANDOFF_TAXONOMY[taxonomy];
+}
 
 function readText(file) {
   return fs.readFileSync(file, "utf8");
@@ -311,7 +317,7 @@ function workspaceHandoffViolationsFor(skill, routes) {
       }
       if (seen.has(taxonomy)) violations.push(`workspace-handoff-case-duplicate:${taxonomy}`);
       seen.add(taxonomy);
-      if (!WORKSPACE_HANDOFF_TAXONOMY[taxonomy].has(item?.expected)) {
+      if (item?.expected !== expectedHandoffOutcome(skill.name, taxonomy)) {
         violations.push(`workspace-handoff-case-outcome-invalid:${taxonomy}`);
       }
     }
