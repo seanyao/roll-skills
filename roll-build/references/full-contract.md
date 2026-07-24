@@ -114,7 +114,7 @@ the command decides. The cap exists purely to stop infinite split chains.
 
 ### Step A2: Read the Story
 
-1. Open `.roll/backlog.md`, find the US row, follow the link to `.roll/features/<epic>/<story>/spec.md`
+1. Open `context.authorities.backlog`, find the US row, then resolve the Story spec beneath `context.authorities.features`
 2. Read the full AC / Files / Dependencies section
 3. If a plan doc (`<feature>-plan.md`) exists, read it for context
 4. **Read the Evaluation contract (US-SKILL-030)**: if the spec contains an `**Evaluation contract:**` block, read `expected_evidence` and `scorer_focus` before writing any code. This is the Designer's artifact contract — use it to inform test design and evidence planning. Map each `expected_evidence` item to a candidate Action or test; if an item is impossible given the actual scope, note the deviation in your report/ac-map. `builder_notes` carry Designer hints — treat them as bounded guidance, not hidden requirements.
@@ -268,7 +268,7 @@ Wait for the user's response before editing files. If the user does not object w
 ### Step B2: Create US / Actions
 
 - Use `$roll-design` to split vague request into INVEST-compliant User Stories
-- Insert US into `.roll/backlog.md` under the relevant Epic > Feature group
+- Insert the US into `context.authorities.backlog` under the relevant Epic > Feature group
 - If a new story folder is needed, mint it via `roll story new <ID> --title <t> --epic <e>` (the single channel, US-META-009), then edit the spec
 
 After creation, switch to **Story mode** and execute the first US immediately.
@@ -373,7 +373,7 @@ $(msg build.micro_step {N} "{description of smallest testable change}")
   `npm-pack.test.ts`) that are red locally / in a cycle worktree but green in
   CI. The FULL suite (`npm test`, no `--affected`) is the CI / pre-push gate
   (Phase 5), never the per-commit gate.
-- On green, `roll test` writes the proof record `.roll/last-test-pass`
+- On green, `roll test` writes the proof record beneath `context.authorities.runtime`
   (`{ts, tree, mode, scope}`). The `pre-commit` hook refuses the commit unless
   that proof is **fresh (≤ 60s)** AND its `tree` matches the current
   `git write-tree` — i.e. the exact code being committed was just tested. So:
@@ -405,19 +405,19 @@ While implementing, watch for these signals:
 When any signal appears, **do not stop — flag it**:
 
 ```bash
-# 1. Append to .roll/backlog.md under ## ♻️ Refactor
+# 1. Append to context.authorities.backlog under ## ♻️ Refactor
 # REFACTOR-XXX | <one-line description> | 📋 Todo
 
-# 2. Append a brief entry to .roll/features/autonomous-evolution/refactor-log.md
+# 2. Append a brief entry beneath context.authorities.features
 ```
 
-**REFACTOR entry format in .roll/backlog.md:**
+**REFACTOR entry format in `context.authorities.backlog`:**
 
 ```markdown
 | REFACTOR-001 | {one-line plain-language description} | 📋 Todo |
 ```
 
-描述写法：参见 AGENTS.md "Backlog descriptions" 规则。说清楚"什么需要改"以及"不改会怎样"，技术细节写在 `.roll/features/<epic>/refactor-log.md`。
+描述写法：参见 AGENTS.md "Backlog descriptions" 规则。说清楚"什么需要改"以及"不改会怎样"，技术细节写在 `context.authorities.features` 下对应 epic 的 `refactor-log.md`。
 
 **refactor-log.md entry format:**
 
@@ -679,14 +679,14 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
    skip the pair; capture the new surface only.
 
 1. **Dump raw evidence** produced in this session to story-level dirs:
-   `.roll/features/<epic>/{ID}/screenshots/*.png` — the DEFAULT evidence class for
+   `context.authorities.evidence/<story-id>/screenshots/*.png` — the DEFAULT evidence class for
    every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
    own report (nothing stops a fabricated `echo "✓ passed" > evidence.txt`); a
    screenshot is an OS-level capture of really-rendered pixels — an independent
    channel with a categorically higher forgery cost. Combined with the
    never-overwritten run dirs (D4) and the render-layer red line, it is the
    strongest link in the evidence chain.
-   `.roll/features/<epic>/{ID}/evidence/*.txt` (resolve `<epic>` via `.roll/index.json`; `roll attest` writes the report there as `{ID}-report.html`) — supplementary (searchable,
+   `context.authorities.evidence/<story-id>/evidence/*.txt` (`roll attest` resolves the Story through the verified handoff and writes `{ID}-report.html`) — supplementary (searchable,
    copyable); keep raw command outputs here, but do not let a text file be the
    ONLY evidence for an AC that has a visible surface.
 
@@ -712,7 +712,7 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
    not a fabricated image) — that is the correct behavior, not a failure. Declare
    `deliverable_url` in the spec frontmatter when the story ships a visible web
    surface so the real view gets captured.
-2. **Write the intent map** `.roll/features/<epic>/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
+2. **Write the intent map** at the Story evidence location resolved from `context.authorities.evidence` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
 
 ```json
 [{ "ac": "{ID}:AC1", "status": "pass",
@@ -724,7 +724,7 @@ story (loop or manual Phase 10.6) and earn the report at delivery time.
 
    **Cross-reference with the Evaluation contract** (when present): each `expected_evidence` item in the contract maps to an AC via its `proves` field. When writing ac-map entries, ensure every `expected_evidence` item is addressed — the attest gate later surfaces a design-contract-vs-delivered delta from this mapping (US-SKILL-030).
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
-3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + Review Score).
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands beneath the Story location resolved from `context.authorities.evidence` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + Review Score).
 4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
    renders, open it and run the checklist below. This is a presentation review of
    the rendered HTML, NOT an evidence review.
@@ -763,27 +763,27 @@ delivered. Consequences you can rely on:
   PR-state (L1) / patch-id (L2) and flips the cycle to `delivered` — manual /
   external merges included (`delivered_external` is first-class).
 
-So on the manual path, flip the row to Done **after** the PR merges. Under
-`roll-loop`, the Builder must not edit shared `.roll` completion status at
-all: the cycle ends at publish (`awaiting_merge`) and the reconciler
+So on the manual path, flip the row to Done **after** the PR merges.
+Under `roll-loop`, the Builder must not edit shared `.roll` completion status.
+The cycle ends at publish (`awaiting_merge`) and the reconciler
 self-drives the merge (`gh pr merge --squash` on green CI) and flips the row
 once the merge lands on `main` — do not pre-flip on a still-open PR.
 
 On the manual path, both locations must be updated — neither can be skipped:
 
-**① Update .roll/backlog.md index row (Status column):**
+**① Update the `context.authorities.backlog` index row (Status column):**
 
-**Location rule (FIX-198)**: edit the MAIN project's backlog by ABSOLUTE path — `${ROLL_MAIN_PROJECT:-$PWD}/.roll/backlog.md`. In ordinary projects the cycle worktree has NO `.roll/` (gitignored, never checked out): a relative `.roll/backlog.md` edit writes into the void and the flip silently vanishes.
+**Location rule (FIX-198 superseded)**: edit only the absolute backlog authority supplied by the verified Workspace handoff. The shell cwd and repository layout are not backlog authority.
 
 
 ```markdown
-| [US-{ID}](.roll/features/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/US-{ID}/latest/US-{ID}-report.html) |
+| [US-{ID}](<features-authority>/<epic>/US-{ID}/spec.md) | {Title} | ✅ Done · [evidence](<evidence-authority>/<story-id>/latest/US-{ID}-report.html) |
 ```
 
 Change the Status from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`.
 For Fly mode: first append an index row under the appropriate Epic > Feature group, then mark it done.
 
-**② Update `.roll/features/<epic>/<story>/spec.md`:**
+**② Update the Story spec resolved beneath `context.authorities.features`:**
 
 ```markdown
 ## US-{ID} {Story Title} ✅
@@ -816,7 +816,7 @@ metadata reconciliation after merge.
 $roll-.changelog
 
 # 2. Commit BACKLOG + feature doc + CHANGELOG.md together
-git add .roll/backlog.md .roll/features/ CHANGELOG.md
+git add <backlog-authority> <story-spec-path> CHANGELOG.md
 git commit -m "docs: mark {US-ID} as completed"
 git push
 ```
@@ -853,7 +853,7 @@ Before creating any file or directory:
 2. **Infer conventions from evidence** — don't assume a project type; observe what already exists
 3. **Follow what already exists** — introduce new patterns only when the current structure has no precedent
 
-> `roll init` no longer asks for project type. Skills are responsible for reading context and acting accordingly.
+> Project type is inferred only after the host supplies a verified Workspace/Issue handoff; this skill never initializes or discovers Workspace authority.
 
 ---
 
@@ -900,7 +900,7 @@ Before creating any file or directory:
    - No "while I'm here" refactors unless in a separate TCR cycle
 
 7. **Always update BACKLOG status**
-   - .roll/backlog.md index row and `.roll/features/<feature>.md` US section are both required
+   - the backlog authority index row and the Story spec beneath the features authority are both required
    - Neither can be skipped
 
 8. **Docs/code/product stay aligned**
@@ -924,8 +924,8 @@ Before creating any file or directory:
 - [ ] Deployed to production
 - [ ] Online verification performed
 - [ ] **Verification Gate passed** (fresh evidence for tests, build, deploy, no regression)
-- [ ] **.roll/backlog.md index status updated** (📋 → ✅, REQUIRED)
-- [ ] **`.roll/features/<feature>.md` US section updated** (Completed date + [x] ACs, REQUIRED)
+- [ ] **`context.authorities.backlog` index status updated** (📋 → ✅, REQUIRED)
+- [ ] **Story spec beneath `context.authorities.features` updated** (Completed date + [x] ACs, REQUIRED)
 - [ ] **CHANGELOG.md staged and bundled** into completion commit via `$roll-.changelog` in Phase 12 (REQUIRED)
 - [ ] Summary reported to user
 
@@ -1113,7 +1113,7 @@ When complex state management is error-prone → consider full reset + re-initia
 roll-build   → ship anything (new idea, US-ID, free-text request)
 roll-fix     → fix a specific known bug (FIX-XXX / BUG-XXX)
 roll-design  → plan and design before building (no code output)
-roll-idea    → fast capture a bug or idea into .roll/backlog.md
+roll-idea    → fast capture a bug or idea into the handed-off backlog authority
 roll-.clarify → passive scope clarification for vague build requests
 ```
 

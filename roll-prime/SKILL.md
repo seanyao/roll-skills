@@ -2,7 +2,13 @@
 name: roll-prime
 license: MIT
 allowed-tools: "Read, Glob, Grep, Bash(git:*), Bash(roll:*), Bash(node:*), Bash(tmux:*), Bash(tail:*), Bash(rg:*), Skill, Agent"
-description: "Load when coordinating a Roll project as Supervisor (supervise role): reconcile backlog truth, advise the owner, dispatch the Delta Team, watch cycles read-only, diagnose structural failures, and reconcile .roll meta — not when implementing a Story as Builder."
+description: "Load when coordinating a Roll project as Supervisor (supervise role): reconcile backlog truth, advise the owner, dispatch the Delta Team, watch cycles read-only, diagnose structural failures, and reconcile Workspace metadata — not when implementing a Story as Builder."
+workspace-execution-handoff: required
+workspace-context-scope: workspace_required_read
+workspace-context-consumer: workspace
+workspace-context-operations: supervise
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Supervisor
 
@@ -18,7 +24,7 @@ Load the full supervisor contract only when you are actively coordinating.
 
 Load when coordinating a Roll project as **Supervisor** (`supervise` role) in guided
 mode: clearing backlog scope, watching loop cycles, diagnosing failures,
-salvaging gates, or reconciling `.roll` meta — **not** when implementing a
+salvaging gates, or reconciling Workspace metadata — **not** when implementing a
 Story as Builder (`roll-build` / `roll-fix`).
 
 ## Operating Modes
@@ -44,18 +50,18 @@ Story as Builder (`roll-build` / `roll-fix`).
   contract (US-V4-021 aligned).
 - [Explorer annex](references/explorer-annex.md) — read-only sub-session for
   deep failure diagnosis.
-- Project overlay: `.roll/prime.local.md` when present (roll-meta).
+- Project overlay: the Supervisor policy overlay resolved beneath `context.authorities.policy` when present.
 
 ## Workflow Skeleton
 
 1. Lock explicit backlog scope (US + FIX + REFACTOR unless owner narrows).
-2. Reconcile truth (`supervisor next/why`, git main + `.roll`, events, PRs).
+2. Reconcile truth (`supervisor next/why`, git main plus Workspace metadata, events, PRs).
 3. Select next card; explain cast (Designer / Builder / Evaluator / Peers).
 4. Clean gate → `roll loop go --cards <id> --max-cycles 1`.
 5. Watch cycles read-only (events + worktree; 0 TCR ≠ auto-fail if still moving).
 6. Stop on structural failure; diagnose before blind retry.
 7. Salvage deliberately (`repair-evidence`, recover, independent evaluator).
-8. Reconcile `.roll` meta after product truth (PR/CI/main).
+8. Reconcile Workspace metadata after product truth (PR/CI/main).
 
 ## Hard Gates
 
@@ -63,7 +69,7 @@ Story as Builder (`roll-build` / `roll-fix`).
 - Never bypass TCR, peer, evaluator, attest, PR, CI, merge, or release gates.
 - Never `git push` / `gh pr create` as Supervisor during a Builder cycle.
 - Persistent policy changes need owner confirmation.
-- Pause live workers before hand-editing `.roll/backlog.md` or specs.
+- Pause live workers before hand-editing the handed-off backlog authority or Story specs.
 
 ## Gotchas
 
@@ -75,3 +81,14 @@ Story as Builder (`roll-build` / `roll-fix`).
   `events.ndjson`, then explain the delta to the owner.
 - Spawn explorer sub-sessions for deep diagnosis; do not turn Supervisor into a
   200-command polling loop without decisions.
+
+## Workspace Execution Handoff
+
+- Before acting, parse the host-provided `Workspace Execution Context` prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT` as `roll.workspace-execution-context/v1`; they must be semantically identical. Missing either copy, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** before supervision.
+- This skill requires `workspace_required_read`. Resolve supervision inputs, policy, and proof only from `context.authorities.backlog`, `context.authorities.features`, `context.authorities.design`, `context.authorities.evidence`, `context.authorities.events`, `context.authorities.runtime`, and `context.authorities.policy`; any approved metadata mutation must use the same authority paths.
+- Never derive authority from the shell cwd, a repository root, or a nearby `.roll` directory.
+- Observe repository state only through an Issue's `context.issue.execution.repositories`. If more than one repository exists and the handoff names no repository ID or alias, STOP with `missing_execution_context`; never choose the first entry.
+- On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop.
+- Do not rediscover from cwd or `.roll`, activate a Workspace, or create one inside this skill.
+- Retry and continuation keep the same Workspace and Issue/Story identity while diagnosing or supervising a cycle. A different identity requires a new host handoff.
+- Legacy migration diagnosis may inspect legacy state only through an explicit `legacy_migration_only` boundary; it is not current supervision authority, and only canonical migration/doctor commands may be suggested.

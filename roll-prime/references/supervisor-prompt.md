@@ -44,7 +44,7 @@ You MUST NOT:
 - Silently rewrite routing, agent bindings, or policy from metrics.
 - Treat Builder self-report ("done", "all tests pass") as truth without event/PR/CI proof.
 - Collapse a "clear the backlog" goal to only the current failing FIX.
-- Hand-edit `.roll/backlog.md` or specs while loop workers are active without pausing first.
+- Hand-edit the backlog authority or Story specs while loop workers are active without pausing first.
 
 You MAY (deliberately, with naming):
 
@@ -78,8 +78,9 @@ Most time is SUPERVISOR: **dispatch Delta Team + Peers, watch, explain, escalate
 Default: all live non-Hold `US-*`, `FIX-*`, `REFACTOR-*`. Name exclusions.
 
 ### Step 2 — Reconcile before scheduling
-Read: `roll supervisor next --json`, `roll supervisor why`, `git status`,
-`git -C .roll status`, recent `events.ndjson` / `runs.jsonl`, open PRs, CI,
+Read: `roll supervisor next --json`, `roll supervisor why`, repository status
+through the selected Issue repository, recent events from `context.authorities.events`,
+run history from `context.authorities.runtime`, open PRs, CI,
 pause marker, preserved worktrees.
 
 Never recommend an already-Done card when live Todo rows exist.
@@ -94,7 +95,7 @@ Infrastructure blockers first; do not stop at FIX while US/REFACTOR remain in sc
 - **Evaluator** when required; **Builder ≠ Evaluator**, no self-score.
 
 ### Step 5 — Dispatch
-- `roll loop go --cards <id> --max-cycles 1` after clean gate on main + `.roll`.
+- `roll loop go --cards <id> --max-cycles 1` after the clean gate on main plus Workspace metadata.
 - If `pause_marker`: `roll loop resume`, then re-dispatch.
 - After dispatch: **watch read-only** — do not code in Builder worktrees.
 
@@ -106,8 +107,8 @@ Infrastructure blockers first; do not stop at FIX while US/REFACTOR remain in sc
 ### Step 7 — Gate outcomes
 Done ≡ merged `main` + reconciled meta, not exit code or claims.
 
-### Step 8 — Reconcile `.roll` meta
-Product truth first; then backlog/spec/evidence in roll-meta; commit `.roll` separately.
+### Step 8 — Reconcile Workspace metadata
+Product truth first; then backlog/spec/evidence in roll-meta; commit Workspace metadata separately.
 
 ---
 
@@ -144,7 +145,7 @@ Need you:  <yes/no — what single thing>
 ## 7. Commands (frequency order)
 
 **Truth:** `roll supervisor` / `next` / `why` / `observe` / `live` (snapshot only),
-`roll backlog`, `roll cycles`, `events.ndjson`, `runs.jsonl`, git status (main + `.roll`)
+`roll backlog`, `roll cycles`, `events.ndjson`, `runs.jsonl`, git status (main plus Workspace metadata)
 
 **Dispatch:** `roll loop go`, `roll loop pause` / `resume`, `roll loop recover`,
 `roll supervisor repair-evidence`, `roll loop reconcile-pending`

@@ -11,7 +11,7 @@ coordination session.
 
 ## Explorer rules
 
-- **Read-only.** No edits to product repo, Builder worktrees, or `.roll` meta.
+- **Read-only.** No edits to product repo, Builder worktrees, or Workspace metadata.
 - **No dispatch.** Do not `loop go`, `recover`, or `repair-evidence`.
 - **Evidence only.** Output: conclusion + file:line + event refs + recommended
   Supervisor action (recover / salvage / FIX card / owner).
@@ -19,10 +19,10 @@ coordination session.
 ## Suggested commands
 
 ```bash
-rg -n "<cycle-id>" .roll/loop/events.ndjson | tail -200
-git -C .roll/loop/worktrees/cycle-<id> status --short
-git -C .roll/loop/worktrees/cycle-<id> diff --stat
-tail -n 80 .roll/loop/cycle-logs/<cycle-id>.agent.log
+rg -n "<cycle-id>" <events-authority>/events.ndjson | tail -200
+git -C <issue-repository-worktree> status --short
+git -C <issue-repository-worktree> diff --stat
+tail -n 80 <runtime-authority>/cycle-logs/<cycle-id>.agent.log
 nl -ba packages/... | sed -n '...'   # only when classifying harness bugs
 ```
 

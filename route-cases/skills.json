@@ -50,6 +50,84 @@
     { "surface": "skill", "id": "roll-ws-create", "operation": "preview", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Workspace creation preview starts from an explicit config before the target Workspace exists." },
     { "surface": "skill", "id": "roll-ws-create", "operation": "apply", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Authorized Workspace creation applies an explicit preview before the target Workspace exists." }
   ],
+  "workspaceExecutionContextFixtures": {
+    "workspace": {
+      "schema": "roll.workspace-execution-context/v1",
+      "workspace": { "workspaceId": "roll", "root": "/workspace/roll", "canonicalRoot": "/workspace/roll", "lifecycle": "active" },
+      "resolution": { "source": "explicit", "evidence": [{ "kind": "requirement_source_exact", "value": "jira:APE-234", "hard": true, "score": 100, "source": "jira:APE-234", "provenance": "explicit_user", "detail": "The explicit Workspace selector and requirement source identify the same Workspace." }] },
+      "bindings": [
+        { "schema": "roll.repository-binding/v1", "repoId": "repo-product", "alias": "product", "remote": "https://example.test/product.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } },
+        { "schema": "roll.repository-binding/v1", "repoId": "repo-skills", "alias": "skills", "remote": "https://example.test/skills.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } }
+      ],
+      "authorities": { "backlog": "/workspace/roll/backlog/index.md", "features": "/workspace/roll/features", "design": "/workspace/roll/design", "requirements": "/workspace/roll/requirements", "policy": "/workspace/roll/policy.yaml", "evidence": "/workspace/roll/evidence", "toolDumps": "/workspace/roll/runtime/tool-dumps", "events": "/workspace/roll/runtime/events", "runtime": "/workspace/roll/runtime", "locks": "/workspace/roll/runtime/locks" }
+    },
+    "issue": {
+      "schema": "roll.workspace-execution-context/v1",
+      "workspace": { "workspaceId": "roll", "root": "/workspace/roll", "canonicalRoot": "/workspace/roll", "lifecycle": "active" },
+      "resolution": { "source": "issue_manifest", "evidence": [{ "kind": "issue_exact", "value": "US-WS-037", "hard": true, "score": 100, "source": "/workspace/roll/issues/US-WS-037/manifest.json", "provenance": "issue_manifest", "detail": "The Issue manifest exactly identifies this Story and Workspace." }] },
+      "bindings": [
+        { "schema": "roll.repository-binding/v1", "repoId": "repo-product", "alias": "product", "remote": "https://example.test/product.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } },
+        { "schema": "roll.repository-binding/v1", "repoId": "repo-skills", "alias": "skills", "remote": "https://example.test/skills.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } }
+      ],
+      "issue": {
+        "storyId": "US-WS-037",
+        "manifestPath": "/workspace/roll/issues/US-WS-037/manifest.json",
+        "execution": {
+          "workspaceId": "roll",
+          "issueRoot": "/workspace/roll/issues/US-WS-037",
+          "repositories": {
+            "repo-product": { "repoId": "repo-product", "alias": "product", "access": "write", "requiredDelivery": true, "noChangePolicy": "changes_required", "worktreePath": "/workspace/roll/issues/US-WS-037/product", "baseSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "headSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "commands": { "test": [], "integration": [] } },
+            "repo-skills": { "repoId": "repo-skills", "alias": "skills", "access": "read", "requiredDelivery": false, "worktreePath": "/workspace/roll/issues/US-WS-037/skills", "baseSha": "cccccccccccccccccccccccccccccccccccccccc", "headSha": "dddddddddddddddddddddddddddddddddddddddd", "commands": { "test": [], "integration": [] } }
+          }
+        }
+      },
+      "authorities": { "backlog": "/workspace/roll/backlog/index.md", "features": "/workspace/roll/features", "design": "/workspace/roll/design", "requirements": "/workspace/roll/requirements", "policy": "/workspace/roll/policy.yaml", "evidence": "/workspace/roll/evidence", "toolDumps": "/workspace/roll/runtime/tool-dumps", "events": "/workspace/roll/runtime/events", "runtime": "/workspace/roll/runtime", "locks": "/workspace/roll/runtime/locks" }
+    }
+  },
+  "workspaceHandoffCases": {
+    "roll-design": [
+      { "case": "arbitrary_cwd", "input": { "cwd": "/tmp/us-ws-037", "promptContextFixture": "workspace", "environmentContextFixture": "workspace", "authoritySource": "handoff", "rediscoveryAttempted": false }, "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "input": { "promptContextFixture": "workspace", "environmentContextFixture": "workspace", "explicitWorkspaceId": "roll", "retryWorkspaceId": "roll", "retryStoryId": null }, "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "input": { "promptContextFixture": "workspace", "environmentContextFixture": "workspace", "resolutionCode": "requirement_workspace_conflict", "rediscoveryAttempted": false }, "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "repositorySelector": null }, "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "input": { "promptContextFixture": "workspace", "environmentContextFixture": "workspace", "scope": "legacy_migration_only", "legacyReadOnly": true, "legacyCommandExecuted": false }, "expected": "legacy_migration_only" }
+    ],
+    "roll-build": [
+      { "case": "arbitrary_cwd", "input": { "cwd": "/tmp/us-ws-037", "promptContextFixture": "issue", "environmentContextFixture": "issue", "authoritySource": "handoff", "rediscoveryAttempted": false }, "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "explicitWorkspaceId": "roll", "retryWorkspaceId": "roll", "retryStoryId": "US-WS-037" }, "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "resolutionCode": "requirement_workspace_conflict", "rediscoveryAttempted": false }, "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "repositorySelector": null }, "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "scope": "legacy_migration_only", "legacyReadOnly": true, "legacyCommandExecuted": false }, "expected": "legacy_migration_only" }
+    ],
+    "roll-fix": [
+      { "case": "arbitrary_cwd", "input": { "cwd": "/tmp/us-ws-037", "promptContextFixture": "issue", "environmentContextFixture": "issue", "authoritySource": "handoff", "rediscoveryAttempted": false }, "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "explicitWorkspaceId": "roll", "retryWorkspaceId": "roll", "retryStoryId": "US-WS-037" }, "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "resolutionCode": "requirement_workspace_conflict", "rediscoveryAttempted": false }, "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "repositorySelector": null }, "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "scope": "legacy_migration_only", "legacyReadOnly": true, "legacyCommandExecuted": false }, "expected": "legacy_migration_only" }
+    ],
+    "roll-loop": [
+      { "case": "arbitrary_cwd", "input": { "cwd": "/tmp/us-ws-037", "promptContextFixture": "issue", "environmentContextFixture": "issue", "authoritySource": "handoff", "rediscoveryAttempted": false }, "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "explicitWorkspaceId": "roll", "retryWorkspaceId": "roll", "retryStoryId": "US-WS-037" }, "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "resolutionCode": "requirement_workspace_conflict", "rediscoveryAttempted": false }, "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "repositorySelector": null }, "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "scope": "legacy_migration_only", "legacyReadOnly": true, "legacyCommandExecuted": false }, "expected": "legacy_migration_only" }
+    ],
+    "roll-prime": [
+      { "case": "arbitrary_cwd", "input": { "cwd": "/tmp/us-ws-037", "promptContextFixture": "issue", "environmentContextFixture": "issue", "authoritySource": "handoff", "rediscoveryAttempted": false }, "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "explicitWorkspaceId": "roll", "retryWorkspaceId": "roll", "retryStoryId": "US-WS-037" }, "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "resolutionCode": "requirement_workspace_conflict", "rediscoveryAttempted": false }, "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "repositorySelector": null }, "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "input": { "promptContextFixture": "issue", "environmentContextFixture": "issue", "scope": "legacy_migration_only", "legacyReadOnly": true, "legacyCommandExecuted": false }, "expected": "legacy_migration_only" }
+    ],
+    "roll-ws-create": [
+      { "case": "arbitrary_cwd", "input": { "cwd": "/tmp/us-ws-037", "createConfig": "/tmp/workspace-create.yaml", "previewRequested": true, "rediscoveryAttempted": false }, "expected": "use_explicit_create_preview" },
+      { "case": "explicit_selector", "input": { "preview": { "workspaceId": "roll", "configSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "planSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "authorization": { "schema": "roll.workspace-create-apply-authorization/v1", "source": "owner_after_preview", "workspaceId": "roll", "configSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "planSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "naturalLanguageIntentOnly": false, "retryPreview": { "workspaceId": "roll", "configSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "planSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" } }, "expected": "use_explicit_create_identity" },
+      { "case": "requirement_mismatch", "input": { "resolutionCode": "requirement_workspace_conflict", "rediscoveryAttempted": false, "applyAttempted": false }, "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "input": { "repositoryBindings": ["product", "skills"], "validatedBindings": ["skills", "product"] }, "expected": "validate_all_create_config_bindings" },
+      { "case": "legacy_boundary", "input": { "legacyJournal": "legacy_create_journal", "reconcileOnly": true, "legacyCommandExecuted": false }, "expected": "reconcile_named_legacy_journals_only" }
+    ]
+  },
   "skills": {
     "roll-.changelog": {
       "positive": [

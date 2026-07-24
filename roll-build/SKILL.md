@@ -3,6 +3,12 @@ name: roll-build
 license: MIT
 allowed-tools: "Read, Edit, Write, Glob, Grep, Bash, Skill, Agent"
 description: "Load when a user gives a US-XXX story or asks to ship a feature through Roll TCR delivery, from clarification through verification and backlog write-back."
+workspace-execution-handoff: required
+workspace-context-scope: issue_required
+workspace-context-consumer: issue
+workspace-context-operations: build
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Build
 
@@ -50,6 +56,17 @@ same TCR, evidence, Evaluator, and release gates apply in both modes.
 
 - Do not use for pure design/backlog splitting; route that to roll-design until implementation starts.
 - TCR and evidence gates remain mandatory even when the code change looks small.
+
+## Workspace Execution Handoff
+
+- Before acting, parse the host-provided `Workspace Execution Context` prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT` as `roll.workspace-execution-context/v1`; they must be semantically identical. Missing either copy, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** before reading or writing.
+- This skill requires `issue_required`. Resolve planning, policy, and proof paths only from `context.authorities.backlog`, `context.authorities.features`, `context.authorities.design`, `context.authorities.evidence`, `context.authorities.runtime`, and `context.authorities.policy`.
+- Never derive authority from the shell cwd, a repository root, or a nearby `.roll` directory.
+- Run every test, build, Git, and delivery command only in a repository from `context.issue.execution.repositories`. If more than one repository exists and the handoff names no repository ID or alias, STOP with `missing_execution_context`; never choose the first entry.
+- On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop.
+- Do not rediscover from cwd or `.roll`, activate a Workspace, or create one inside this skill.
+- Retry and continuation keep the same Workspace and Issue/Story identity, repository selection, and authority paths from the verified handoff. A different identity requires a new host handoff.
+- Legacy migration may be handled only through an explicit `legacy_migration_only` handoff; legacy layout is input evidence, never execution authority, and no public initialization entry point is offered.
 
 ## Context Snapshot Handoff
 
