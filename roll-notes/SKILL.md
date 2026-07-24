@@ -41,7 +41,7 @@ $roll-notes 今天的 code review 给了很好的反馈
 
 ## Behavior
 
-1. **Determine file path**: `.roll/notes/YYYY-MM-DD.md` relative to project root (parallel to `.roll/dream/` and `.roll/briefs/` — notes is project metadata, not source)
+1. **Determine file path**: resolve the canonical Workspace from injected context, then use its `.roll/notes/YYYY-MM-DD.md` path (parallel to `.roll/dream/` and `.roll/briefs/`). Never derive authority from cwd or a repository root; when unclear, invoke `$roll-.clarify` to choose an existing Workspace or create one.
 2. **Get current time**: Use `Asia/Shanghai` timezone (`TZ=Asia/Shanghai date`)
 3. **Read existing entries for style**: Before writing, read the last 2–3 entries
    in the same file. Analyze their style: heading format, voice/tone,

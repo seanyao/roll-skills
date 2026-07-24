@@ -105,7 +105,7 @@ Complexity guide: S = one skill file or small bin/roll change, M = skill + bin/r
 
 ### Step 4 — Write to .roll/proposals.md
 
-Append to `.roll/proposals.md` in the project root (create if absent):
+Resolve the canonical Workspace from injected context, then append to its `.roll/proposals.md` (create if absent). Never derive authority from cwd or a repository root; when unclear, invoke `$roll-.clarify` to choose an existing Workspace or create one.
 
 ```markdown
 ---

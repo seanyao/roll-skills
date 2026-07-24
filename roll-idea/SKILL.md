@@ -39,7 +39,7 @@ $roll-idea 给 HOD 加一个批量导出 PDF 的功能
 
 ## Behavior
 
-1. **Read** `.roll/backlog.md` from the project root.
+1. **Resolve Workspace authority** from the injected Workspace context, then read its canonical backlog path. Never derive authority from cwd or a repository root; when the Workspace is unclear, invoke `$roll-.clarify` to choose an existing Workspace or create one.
 2. **Classify** the input:
    - If it describes a defect, regression, broken behavior, or "也要/没/不/bug" → **bug**
    - Otherwise → **idea**
