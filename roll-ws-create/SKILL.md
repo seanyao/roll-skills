@@ -1,6 +1,10 @@
 ---
 name: roll-ws-create
 description: Load when an operator wants to preview and create a complete Roll Workspace from a versioned config through the canonical `roll workspace create` surface.
+workspace-execution-handoff: required
+workspace-context-scope: machine_only
+workspace-context-consumer:
+workspace-context-operations: preview,apply
 ---
 
 # Roll Workspace Create
@@ -11,6 +15,16 @@ filesystem, registry, cache, and Git mutation to the CLI.
 Creation establishes Workspace authorities and repository bindings; it does not activate the Workspace.
 Use `roll workspace issue init` after creation for Story repository worktrees.
 Use `roll workspace migrate` for a historical repository-local Roll project.
+
+## Workspace Execution Handoff
+
+- This is the `machine_only` exception because the target Workspace does not exist yet. If a host supplies a `Workspace Execution Context` prompt block or `ROLL_WORKSPACE_EXECUTION_CONTEXT`, it must supply both as semantically identical `roll.workspace-execution-context/v1` JSON. Missing one copy, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP**; the skill never repairs or rediscovers that context.
+- Preview consumes only an explicit create config and the CLI's returned `workspaceId`, `configSha256`, and `planSha256`. Apply consumes only an exact `roll.workspace-create-apply-authorization/v1` bound to those unchanged values; natural-language `create_new` permits preview only.
+- `context.authorities` is not available before creation and must not be synthesized from cwd or `.roll`. After creation, backlog, features, design, evidence, and runtime belong to a later verified Workspace handoff.
+- Issue repository commands are out of scope here. A later Issue handoff must use `context.issue.execution.repositories`; if it contains multiple repositories without a repository ID or alias, that later stage must STOP rather than choose the first entry.
+- On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or apply creation from the clarification answer.
+- Retry and continuation keep the same Workspace and Issue/Story identity when context exists, and keep the same create identity/digests during preview-to-authorization. Any change requires a fresh preview and authorization.
+- Legacy journal recovery is the only creation-time legacy boundary: the CLI may reconcile named historical journals, but the skill never exposes a public Workspace init command or treats legacy layout as authority.
 
 ## Workflow
 

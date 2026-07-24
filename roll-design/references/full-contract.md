@@ -8,14 +8,14 @@ This file preserves the detailed contract extracted from SKILL.md. Read it when 
 
 > Follows the Architecture Constraints, Development Discipline, and Engineering Common Sense defined in the project AGENTS.md.
 
-Discuss approaches, design architecture, plan requirements, and write to `.roll/backlog.md`. DDD modeling depth scales automatically with input scope.
+Discuss approaches, design architecture, plan requirements, and write through `context.authorities.backlog`. DDD modeling depth scales automatically with input scope.
 
 ## When to Use
 
 - Requirements or approach are uncertain and multiple options need to be compared
 - Requirements have not yet entered the backlog
 - A solution needs to be designed before splitting into Stories
-- An existing plan needs to be written into `.roll/backlog.md`
+- An existing plan needs to be written into the handed-off backlog authority
 
 > **Doc-refresh discipline**: When splitting stories that change user-visible behavior, always append a closing "doc-refresh" story.
 > **文档刷新纪律**：拆出的 story 只要改变了用户可见行为，最后必须追加一张"文档刷新"收尾 story。
@@ -49,7 +49,7 @@ $roll-design "What approach should we use for search? Postgres FTS or Meilisearc
 $roll-design "user system design"
 
 # Split Stories from an existing Plan
-$roll-design --from-plan .roll/features/auth-plan.md
+$roll-design --from-plan <features-authority>/auth-plan.md
 
 # Directly create a Story (auto-detected as User Story → Slice DDD)
 $roll-design "user login feature"
@@ -71,7 +71,7 @@ DDD modeling depth is determined automatically. It is not a switch — it is a d
 新项目 / greenfield   Full            Event Storming (对话引导)
                                       Context Map + UL 词汇表
                                       每个 Context 的 Tactical Model
-                                      → .roll/domain/
+                                      → <design-authority>/domain/
 
 User Story / 新特性   Slice           定位所属 Bounded Context
                                       关键 Aggregate + 触碰的 Entity/VO
@@ -86,7 +86,7 @@ Bug Fix               Tag             Context > Aggregate > Entity 定位
 
 ```
 Greenfield 信号（满足任意一条）:
-  - 无 .roll/backlog.md / .roll/domain/ 目录
+  - 无可用的 `context.authorities.backlog` / `context.authorities.design` authority
   - 输入含 "从零" / "新项目" / "建模" / "设计整个系统" 关键词
   - complexity = large AND 无已有 Bounded Context 文档
 
@@ -104,8 +104,8 @@ Bug Fix 信号:
 Document structure (story-first layout, US-META-005):
 
 ```
-.roll/backlog.md                          # story index (status + one-liner)
-.roll/features/
+context.authorities.backlog               # story index (status + one-liner)
+context.authorities.features/
   <epic>/                                 # epic folder
     <feature>.md                          # feature design doc (optional, multi-story overview)
     <feature>-plan.md                     # design plan (optional)
@@ -113,7 +113,7 @@ Document structure (story-first layout, US-META-005):
       spec.md                             # story definition (AC, depends-on, etc.)
       index.html                          # auto-generated story portal
       delivery/                           # attest evidence (auto-generated on Done)
-.roll/domain/                             # DDD domain model
+context.authorities.design/domain/        # DDD domain model
   context-map.md
   ubiquitous-language.md
 ```
@@ -125,8 +125,8 @@ Document structure (story-first layout, US-META-005):
 4. **Feature design docs stay at epic root** — `<feature>.md` and `<feature>-plan.md` are optional, multi-story design overviews
 5. **index.html is auto-generated** by `roll idea` (skeleton) and updated by `roll attest` (delivery section)
 6. **delivery/ is auto-created** by `roll attest` on Done — do not create manually
-7. .roll/backlog.md only contains index rows (one row per story), **do not write** AC / Files there
-8. Domain model files go in `.roll/domain/`
+7. `context.authorities.backlog` only contains index rows (one row per story), **do not write** AC / Files there
+8. Domain model files go beneath `context.authorities.design/domain/`
 9. **Do not** write to `~/.kimi/`, `~/.kimi-code/`, or any global config directory
 
 **File path resolution:**
@@ -134,8 +134,8 @@ Document structure (story-first layout, US-META-005):
 2. Mint the card via the single channel (US-META-009 — never hand-create the folder):
    `roll story new <ID> --title "<one-line title>" --epic <epic>`
 3. Then EDIT the minted spec.md to add the full AC / Files / Dependencies / Agent profile
-4. Backlog row links to: `.roll/features/<epic>/<story>/spec.md`
-5. Design / plan docs (when needed): `.roll/features/<epic>/<feature>.md` + `<feature>-plan.md`
+4. Backlog row links to the Story spec beneath `context.authorities.features`
+5. Design / plan docs (when needed) are resolved beneath `context.authorities.design` and `context.authorities.features`
 
 ## Non-Interactive Mode
 
@@ -173,10 +173,10 @@ Expected AC:
 ### `--from-idea IDEA-NNN`
 
 ```
-Input: IDEA-NNN identifier from .roll/backlog.md
+Input: IDEA-NNN identifier from `context.authorities.backlog`
 
 Execution path:
-  [Read .roll/backlog.md IDEA-NNN row] → [Analyze] → [DDD Slice] → [Solution Design] → [Split Stories]
+  [Read backlog authority IDEA-NNN row] → [Analyze] → [DDD Slice] → [Solution Design] → [Split Stories]
       → [Write BACKLOG 📋 Todo] → [Annotate IDEA row: → US-XXX] → Done
 
 IDEA annotation: append `→ US-XXX` to the IDEA row's Description column.
@@ -267,8 +267,8 @@ User Input
        │                  │  - Bounded Contexts 定义     │
        │                  │  - Context Map (关系类型)    │
        │                  │  - Ubiquitous Language 词汇表│
-       │                  │  → .roll/domain/context-map.md│
-       │                  │  → .roll/domain/ubiquitous-   │
+       │                  │  → <design-authority>/domain/ │
+       │                  │    context-map.md + language │
        │                  │      language.md             │
        │                  └──────────────┬──────────────┘
        │                                 │
@@ -311,8 +311,8 @@ User Input
               │      - Domain Events (触发条件 + 消费方) │
               │      - Repository interfaces            │
               │      - Domain Services (跨 Aggregate)  │
-              │    → .roll/features/<feature>-plan.md    │
-              │    [Greenfield] → .roll/domain/<ctx>-    │
+              │    → <design-authority>/<feature>-plan.md│
+              │    [Greenfield] → <design-authority>/    │
               │      model.md                           │
               └──────────────────┬──────────────────────┘
                                  │
@@ -346,7 +346,7 @@ User Input
                                  │
                                  ▼
               ┌─────────────────────────────────────────┐
-              │ 5. Write to .roll/backlog.md                   │
+              │ 5. Write to context.authorities.backlog        │
               │    - Create US-XXX                       │
               │    - Define AC                           │
               │    - Link design documents               │
@@ -433,7 +433,7 @@ Candidate Bounded Contexts:
 
 ### Strategic Design Output
 
-写入 `.roll/domain/context-map.md`：
+写入 `context.authorities.design/domain/context-map.md`：
 
 ```markdown
 ## Bounded Contexts
@@ -451,7 +451,7 @@ Order ═══U/D═══→ Payment     (Customer-Supplier: Order 发起支�
 Payment ──ACL──→ Alipay      (Anti-Corruption Layer: 防腐层隔离第三方)
 ```
 
-写入 `.roll/domain/ubiquitous-language.md`：
+写入 `context.authorities.design/domain/ubiquitous-language.md`：
 
 ```markdown
 | 术语 | 定义 | 所属 Context | 注意事项 |
@@ -473,7 +473,7 @@ Context Map 关系类型说明：
 
 ### Tactical Model Output
 
-写入 `.roll/domain/<context>-model.md`：
+写入 `context.authorities.design/domain/<context>-model.md`：
 
 ```markdown
 ## Tactical Model: Order Context
@@ -532,16 +532,16 @@ Domain: Order Context > Order Aggregate > OrderItem Entity
 
 ### AGENTS.md Where to Look — 指针维护
 
-After completing any Domain Slice (User Story level), check if the project's `AGENTS.md` has a `## Where to Look` section with a `.roll/domain/` pointer. If missing, append one line:
+After completing any Domain Slice (User Story level), check the selected repository's `AGENTS.md` for a `## Where to Look` pointer to the handed-off design authority. If missing, append one line:
 
 ```markdown
-- **Domain model**: `.roll/domain/context-map.md` — Bounded Contexts and relationships
+- **Domain model**: `<design-authority>/domain/context-map.md` — Bounded Contexts and relationships
 ```
 
 Rules:
 - Idempotent: only append if the pointer line is not already present
 - Do not modify any other content in AGENTS.md
-- Skip silently if `.roll/domain/` does not yet exist for this project
+- Skip silently if the handed-off design authority has no domain model yet
 
 ---
 
@@ -662,36 +662,36 @@ Do **not** infer "approach confirmed" from the user's reaction to the comparison
 FEATURE="compiler"
 
 # 2. Write Plan document (if there is a solution design)
-PLAN_FILE=".roll/features/${EPIC}/${FEATURE}-plan.md"
+PLAN_FILE="<design-authority>/${EPIC}/${FEATURE}-plan.md"
 
-# 3. Write story spec: .roll/features/<epic>/<story>/spec.md (full AC)
-# Story specs: .roll/features/<epic>/<story>/spec.md
+# 3. Write the Story spec beneath context.authorities.features (full AC)
+# Story specs: <features-authority>/<epic>/<story>/spec.md
 
-# 4. Append index row under the corresponding Epic > Feature group in .roll/backlog.md
-# | [US-XXX](.roll/features/compiler.md#us-xxx) | One-line description | 📋 Todo |
+# 4. Append the index row under the corresponding Epic > Feature group in context.authorities.backlog
+# | [US-XXX](<features-authority>/compiler.md#us-xxx) | One-line description | 📋 Todo |
 
 # 5. [Greenfield only] Write domain model files
-DOMAIN_DIR=".roll/domain/"
-# .roll/domain/context-map.md
-# .roll/domain/ubiquitous-language.md
-# .roll/domain/<context>-model.md
+DOMAIN_DIR="<design-authority>/domain/"
+# <design-authority>/domain/context-map.md
+# <design-authority>/domain/ubiquitous-language.md
+# <design-authority>/domain/<context>-model.md
 ```
 
 ---
 
 ## Story Format
 
-**.roll/backlog.md index row (only write this one line):**
+**`context.authorities.backlog` index row (only write this one line):**
 
 ```markdown
-| [US-{DOMAIN}-{N}](.roll/features/<epic>/US-{DOMAIN}-{N}/spec.md) | {one-line description} | 📋 Todo |
+| [US-{DOMAIN}-{N}](<features-authority>/<epic>/US-{DOMAIN}-{N}/spec.md) | {one-line description} | 📋 Todo |
 ```
 
-`{one-line description}` 写法：用户能读懂的一句话，说清楚"能做什么"或"解决了什么麻烦"。不写实现细节、文件路径、函数名。细节和 AC 写在 `.roll/features/` 里。写好了可以直接当 CHANGELOG 条目用。
+`{one-line description}` 写法：用户能读懂的一句话，说清楚"能做什么"或"解决了什么麻烦"。不写实现细节、文件路径、函数名。细节和 AC 写在 `context.authorities.features` 下。写好了可以直接当 CHANGELOG 条目用。
 
 Note: `{DOMAIN}` maps to the Bounded Context name identified in DDD analysis.
 
-**US section in .roll/features/\<feature\>.md (full details):**
+**US section beneath `context.authorities.features` (full details):**
 
 ```markdown
 <a id="us-{domain}-{n}"></a>
@@ -852,11 +852,11 @@ Each story must be:
 ### Feature Name
 | Story | Description | Status |
 |-------|-------------|--------|
-| [US-XXX](.roll/features/<epic>/<story>/spec.md#us-xxx) | One-line description | 📋 Todo |
-| [US-YYY](.roll/features/<epic>/<story>/spec.md#us-yyy) | One-line description | ✅ Done |
+| [US-XXX](<features-authority>/<epic>/<story>/spec.md#us-xxx) | One-line description | 📋 Todo |
+| [US-YYY](<features-authority>/<epic>/<story>/spec.md#us-yyy) | One-line description | ✅ Done |
 ```
 
-**Note**: .roll/backlog.md only contains index rows; full AC / Files / Dependencies go in `.roll/features/<epic>/<story>/spec.md`.
+**Note**: `context.authorities.backlog` only contains index rows; full AC / Files / Dependencies go in the Story spec beneath `context.authorities.features`.
 
 ---
 
@@ -947,11 +947,11 @@ On ESCALATE → present both proposals to user for final call.
 Before creating any file or directory:
 
 1. **Read existing project structure** — check for `package.json`, `go.mod`, `Cargo.toml`, `pyproject.toml`, existing `src/`, `api/`, `cmd/` directories
-2. **Check existing domain model** — if `.roll/domain/` exists, read `context-map.md` before adding new Bounded Contexts
+2. **Check existing domain model** — if `context.authorities.design/domain/` exists, read `context-map.md` before adding new Bounded Contexts
 3. **Infer conventions from evidence** — don't assume a project type; observe what already exists
 4. **Follow what already exists** — introduce new patterns only when the current structure has no precedent
 
-> `roll init` no longer asks for project type. Skills are responsible for reading context and acting accordingly.
+> Project type is inferred only after the host supplies a verified Workspace handoff; this skill never initializes or discovers Workspace authority.
 
 ---
 

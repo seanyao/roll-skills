@@ -48,7 +48,7 @@ denied operations and the cycle will idle-exit.
   lookup, `Edit` for modifications. They cross sandbox boundaries that
   `cat` / `ls` / `sed` cannot.
 - **CWD-relative paths first**: the cycle's CWD is the per-cycle worktree.
-  Files inside it (.roll/backlog.md, bin/roll, tests/, docs/) are always
+  Files inside the selected Issue repository and the authorities supplied by the handoff are always
   accessible. Files at `~/.shared/roll/...` are reachable via the `Read`
   tool but not via shell commands.
 - **Quote every glob**: the `Bash` tool runs commands through the user's
@@ -91,11 +91,11 @@ loop:
 Process-level crash recovery (LOCK, heartbeat, retry budget) is handled by
 the v3 runner (`packages/cli/src/runner/run-cycle.ts`) — the per-project LOCK
 guarantees only one cycle for this slug is alive when you start. So at
-this point, any `🔨 In Progress` row in `.roll/backlog.md` belongs to a
+this point, any `🔨 In Progress` row in `context.authorities.backlog` belongs to a
 previous cycle that crashed before flipping it back; reclaim it before
 scanning.
 
-1. Scan .roll/backlog.md for all rows whose Status column contains `🔨 In Progress`.
+1. Scan `context.authorities.backlog` for all rows whose Status column contains `🔨 In Progress`.
 2. For each such row: revert the status back to
    `📋 Todo`, commit `chore: revert orphan 🔨 US-XXX to 📋`, and append
    a line to `~/.shared/roll/loop/ALERT-<slug>.md` recording the orphan
@@ -157,7 +157,7 @@ Step 2 (BACKLOG scan). Same posture as the pre-run CI check.
 
 ### Step 2 — Scan BACKLOG
 
-Read `.roll/backlog.md`. Collect all rows where Status = `📋 Todo`, in order:
+Read `context.authorities.backlog`. Collect all rows where Status = `📋 Todo`, in order:
 
 Priority: FIX-XXX first (bugs block progress), then US-XXX, then REFACTOR-XXX.
 
@@ -184,7 +184,7 @@ skip the story and log to `runs.jsonl` `skipped` with reason
 `"depends-on: <unsatisfied>"`.
 
 Move to the next candidate when skipping. The gate is a pure function
-over `.roll/backlog.md` text — no side effects, no LOCK interaction.
+over the text at `context.authorities.backlog` — no side effects, no LOCK interaction.
 
 Cap at `max_items_per_run` to limit blast radius per cycle.
 
@@ -222,7 +222,7 @@ Together these mean: only one loop runs at a time per project (LOCK), and within
 > - no story is pickable (empty Todo / all blocked by depends-on)
 > - the matching agent-routes.yaml has no agent that fits the story profile (then `cold_start_default` is used)
 
-For each item, **before invoking the executor skill**, mark the story 🔨 In Progress in the **main repo's** `.roll/backlog.md` so brief and peer agents can see it being worked on. The cycle worktree is gitignored at `.roll/`, so editing the worktree's own copy + committing carries no change back to main — write directly via the backlog store instead. The v3 runner updates `${ROLL_MAIN_PROJECT}/.roll/backlog.md` in place; do not call the retired bash helpers `_loop_mark_in_progress` / `_loop_mark_todo`.
+For each item, **before invoking the executor skill**, mark the Story 🔨 In Progress through `context.authorities.backlog` so brief and peer agents can see it being worked on. The runner writes through the Workspace backlog store; repository cwd and worktree-local metadata are never the status authority. Do not call the retired bash helpers `_loop_mark_in_progress` / `_loop_mark_todo`.
 
 If the executor fails (TCR aborts, CI red, etc.), revert the marker so the next cycle can re-pick the story.
 
@@ -265,7 +265,7 @@ After each item completes:
 
 1. **TCR 硬校验** — call `roll loop enforce-tcr <story_id> <started_at>`:
    - Count `tcr:` prefix commits since `started_at` via `git log --oneline --since=<started_at>`
-   - Count == 0 → revert story status in .roll/backlog.md from ✅ Done → 📋 Todo; write ALERT to `~/.shared/roll/loop/ALERT-<slug>.md` with story ID, time, reason "zero tcr: commits since story start", and suggested actions (`roll loop now` / `$roll-build <id>` / `roll loop reset`)
+   - Count == 0 → revert Story status in `context.authorities.backlog` from ✅ Done → 📋 Todo; write the ALERT beneath `context.authorities.runtime` with Story ID, time, reason "zero tcr: commits since story start", and suggested actions (`roll loop now` / `$roll-build <id>` / `roll loop reset`)
    - Count > 0 → continue normally
 2. **CI Gate** — **MUST** invoke `roll ci --wait`. **Do NOT call `gh` directly**
    (no `gh run list`, no `gh run watch`,
@@ -528,7 +528,7 @@ across all projects on this machine. Check the current state with
 
 ```
 roll-loop
-  ├── reads      .roll/backlog.md
+  ├── reads      context.authorities.backlog
   ├── invokes    $roll-build (US-XXX, REFACTOR-XXX)
   ├── invokes    $roll-fix (FIX-XXX)
   ├── invokes    $roll-brief (on Feature completion)

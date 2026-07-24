@@ -50,6 +50,50 @@
     { "surface": "skill", "id": "roll-ws-create", "operation": "preview", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Workspace creation preview starts from an explicit config before the target Workspace exists." },
     { "surface": "skill", "id": "roll-ws-create", "operation": "apply", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Authorized Workspace creation applies an explicit preview before the target Workspace exists." }
   ],
+  "workspaceHandoffCases": {
+    "roll-design": [
+      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "expected": "legacy_migration_only" }
+    ],
+    "roll-build": [
+      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "expected": "legacy_migration_only" }
+    ],
+    "roll-fix": [
+      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "expected": "legacy_migration_only" }
+    ],
+    "roll-loop": [
+      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "expected": "legacy_migration_only" }
+    ],
+    "roll-prime": [
+      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "expected": "legacy_migration_only" }
+    ],
+    "roll-ws-create": [
+      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
+      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
+      { "case": "legacy_boundary", "expected": "legacy_journal_recovery_only" }
+    ]
+  },
   "skills": {
     "roll-.changelog": {
       "positive": [

@@ -4,6 +4,23 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const CORE_WORKSPACE_HANDOFF_SKILLS = [
+  "roll-design",
+  "roll-build",
+  "roll-fix",
+  "roll-loop",
+  "roll-prime",
+  "roll-ws-create",
+];
+
+const WORKSPACE_HANDOFF_TAXONOMY = {
+  arbitrary_cwd: new Set(["use_handoff_authorities"]),
+  explicit_selector: new Set(["use_verified_explicit_identity"]),
+  requirement_mismatch: new Set(["stop_and_route_workspace_target"]),
+  multi_repo: new Set(["stop_without_repository_selector"]),
+  legacy_boundary: new Set(["legacy_migration_only", "legacy_journal_recovery_only"]),
+};
+
 function readText(file) {
   return fs.readFileSync(file, "utf8");
 }
@@ -108,6 +125,60 @@ function collectReferencedSpokes(body) {
   return [...refs].sort();
 }
 
+function csv(value) {
+  return String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .sort();
+}
+
+function extractHandoffSection(body) {
+  const heading = body.match(/^## Workspace Execution Handoff\s*$/mu);
+  if (heading?.index === undefined) return "";
+  const afterHeading = body.slice(heading.index + heading[0].length);
+  const nextHeading = afterHeading.search(/^##\s/mu);
+  return (nextHeading === -1 ? afterHeading : afterHeading.slice(0, nextHeading)).trim();
+}
+
+function collectContractText(skillDir) {
+  return walkFiles(skillDir)
+    .filter((file) => /\.(?:md|ya?ml|json|txt)$/u.test(file))
+    .map((file) => ({ file, text: readText(file) }));
+}
+
+function legacyBoundaryLine(line) {
+  return /legacy|historical|migration|journal|recovery|removed|retired|reject/iu.test(line);
+}
+
+function staleAuthorityViolations(skillDir) {
+  const violations = [];
+  for (const { file, text } of collectContractText(skillDir)) {
+    const relative = toPosix(path.relative(skillDir, file));
+    for (const [offset, line] of text.split(/\r?\n/u).entries()) {
+      const location = `${relative}:${offset + 1}`;
+      const explicitlyForbidden = /forbid|forbidden|never|must not|do not|instead of|rather than/iu.test(line);
+      if (
+        /\.roll\/(?:backlog\.md|features\/|design\/|domain\/|loop\/)/u.test(line) &&
+        !legacyBoundaryLine(line) &&
+        !explicitlyForbidden
+      ) {
+        violations.push(`stale-workspace-authority:${location}`);
+      }
+      if (/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD/u.test(line) && !explicitlyForbidden) {
+        violations.push(`ambient-pwd-authority:${location}`);
+      }
+      if (/\broll (?:workspace )?init\b|workspace-init/iu.test(line) && !legacyBoundaryLine(line)) {
+        violations.push(`public-workspace-init:${location}`);
+      }
+      if (/global current Workspace/iu.test(line) && !/no |not |never |does not |without /iu.test(line)) {
+        violations.push(`global-current-workspace:${location}`);
+      }
+    }
+  }
+  return violations;
+}
+
 export function parseSkillFile(file) {
   const text = readText(file);
   const { fields, body, ok } = parseFrontmatter(text);
@@ -134,6 +205,11 @@ export function parseSkillFile(file) {
     referencedSpokes,
     missingSpokeRefs: referencedSpokes.filter((ref) => !spokeFiles.includes(ref)),
     unreferencedSpokes: spokeFiles.filter((filePath) => !referencedSpokes.includes(filePath)),
+    workspaceExecutionHandoff: fields["workspace-execution-handoff"] ?? "",
+    workspaceContextScope: fields["workspace-context-scope"] ?? "",
+    workspaceContextConsumer: fields["workspace-context-consumer"] ?? "",
+    workspaceContextOperations: csv(fields["workspace-context-operations"]),
+    workspaceHandoffSection: extractHandoffSection(body),
   };
 }
 
@@ -164,6 +240,74 @@ function routeCoverageFor(skillName, routes) {
   };
 }
 
+function workspaceHandoffViolationsFor(skill, routes) {
+  if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skill.name)) return [];
+
+  const violations = [];
+  const policies = (routes.workspaceContextPolicies ?? []).filter((policy) => policy.id === skill.name);
+  const policyOperations = policies.map((policy) => policy.operation).sort();
+  const policyScopes = [...new Set(policies.map((policy) => policy.scope))];
+  const policyConsumers = [...new Set(policies.map((policy) => policy.contextConsumer ?? ""))];
+
+  if (skill.workspaceExecutionHandoff !== "required") violations.push("workspace-handoff-declaration-missing");
+  if (policyScopes.length !== 1 || skill.workspaceContextScope !== policyScopes[0]) {
+    violations.push("workspace-handoff-policy-mismatch:scope");
+  }
+  if (policyConsumers.length !== 1 || skill.workspaceContextConsumer !== policyConsumers[0]) {
+    violations.push("workspace-handoff-policy-mismatch:consumer");
+  }
+  if (JSON.stringify(skill.workspaceContextOperations) !== JSON.stringify(policyOperations)) {
+    violations.push("workspace-handoff-policy-mismatch:operations");
+  }
+
+  const section = skill.workspaceHandoffSection;
+  if (section === "") {
+    violations.push("workspace-handoff-section-missing");
+  } else {
+    const requiredMarkers = [
+      ["prompt-block", /prompt block/iu],
+      ["environment", /ROLL_WORKSPACE_EXECUTION_CONTEXT/u],
+      ["semantic-equality", /semantically identical/iu],
+      ["fail-closed", /missing[\s\S]*invalid JSON[\s\S]*schema mismatch[\s\S]*Workspace mismatch[\s\S]*Story mismatch[\s\S]*scope mismatch[\s\S]*STOP/iu],
+      ["authorities", /context\.authorities/u],
+      ["repositories", /issue\.execution\.repositories/u],
+      ["multi-repo-selector", /repository (?:ID|id) or alias/iu],
+      ["clarify-route", /roll-\.clarify workspace_target/u],
+      ["no-rediscovery", /(?:do not|never)[^.\n]*(?:rediscover|discovery)[^.\n]*(?:cwd|\.roll)/iu],
+      ["identity-continuity", /retry[^.\n]*continuation[^.\n]*same[^.\n]*(?:Workspace|workspace)[^.\n]*(?:Issue|Story|story)/iu],
+      ["legacy-boundary", /legacy[^.\n]*(?:migration|journal|recovery)/iu],
+    ];
+    for (const [name, pattern] of requiredMarkers) {
+      if (!pattern.test(section)) violations.push(`workspace-handoff-marker-missing:${name}`);
+    }
+  }
+
+  const cases = routes.workspaceHandoffCases?.[skill.name];
+  if (!Array.isArray(cases)) {
+    violations.push("workspace-handoff-cases-missing");
+  } else {
+    const seen = new Set();
+    for (const item of cases) {
+      const taxonomy = item?.case;
+      if (!Object.hasOwn(WORKSPACE_HANDOFF_TAXONOMY, taxonomy)) {
+        violations.push(`workspace-handoff-case-unknown:${String(taxonomy)}`);
+        continue;
+      }
+      if (seen.has(taxonomy)) violations.push(`workspace-handoff-case-duplicate:${taxonomy}`);
+      seen.add(taxonomy);
+      if (!WORKSPACE_HANDOFF_TAXONOMY[taxonomy].has(item?.expected)) {
+        violations.push(`workspace-handoff-case-outcome-invalid:${taxonomy}`);
+      }
+    }
+    for (const taxonomy of Object.keys(WORKSPACE_HANDOFF_TAXONOMY)) {
+      if (!seen.has(taxonomy)) violations.push(`workspace-handoff-case-missing:${taxonomy}`);
+    }
+  }
+
+  violations.push(...staleAuthorityViolations(path.dirname(skill.file)));
+  return violations;
+}
+
 function violationsFor(skill, routeCoverage) {
   const violations = [];
 
@@ -184,6 +328,7 @@ export function auditSkills({ skillsDir, routeFile }) {
   const skills = findSkillFiles(skillsDir).map((file) => {
     const skill = parseSkillFile(file);
     const routeCoverage = routeCoverageFor(skill.name, routes);
+    const workspaceHandoffViolations = workspaceHandoffViolationsFor(skill, routes);
     return {
       ...skill,
       routeCoverage: {
@@ -191,7 +336,8 @@ export function auditSkills({ skillsDir, routeFile }) {
         negativeCount: routeCoverage.negative.length,
         hasMinimumCoverage: routeCoverage.hasMinimumCoverage,
       },
-      violations: violationsFor(skill, routeCoverage),
+      workspaceHandoffViolations,
+      violations: [...violationsFor(skill, routeCoverage), ...workspaceHandoffViolations],
     };
   });
 
@@ -202,6 +348,10 @@ export function auditSkills({ skillsDir, routeFile }) {
     withGotchas: skills.filter((skill) => skill.hasGotchas).length,
     loadTriggerDescriptions: skills.filter((skill) => skill.descriptionLoadTrigger).length,
     withAuxiliaryFiles: skills.filter((skill) => skill.spokeFiles.length > 0).length,
+    workspaceHandoffViolations: skills.reduce(
+      (count, skill) => count + skill.workspaceHandoffViolations.length,
+      0,
+    ),
   };
 
   return { summary, skills };
@@ -213,6 +363,7 @@ function printHuman(report) {
   console.log(`Gotchas coverage: ${report.summary.withGotchas}/${report.summary.skills}`);
   console.log(`Skills over 250 lines: ${report.summary.over250}`);
   console.log(`Skills with auxiliary files: ${report.summary.withAuxiliaryFiles}`);
+  console.log(`Workspace handoff violations: ${report.summary.workspaceHandoffViolations}`);
   console.log(`Violations: ${report.summary.violations}`);
 
   for (const skill of report.skills) {

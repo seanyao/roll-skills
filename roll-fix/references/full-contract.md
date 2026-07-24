@@ -19,11 +19,11 @@ Use when:
 - It does not need to be split into multiple Stories / Actions to deliver
 
 **Workflow:**
-1. Read .roll/backlog.md index → Find FIX/BUG row → Follow link to `.roll/features/<epic>/<story>/spec.md`
+1. Read `context.authorities.backlog` → find the FIX/BUG row → resolve the Story spec beneath `context.authorities.features`
 2. **Read the Evaluation contract (US-SKILL-030)** if the spec contains an `**Evaluation contract:**` block. Read `expected_evidence` and `scorer_focus` before writing code; use them to guide test design and evidence collection. Map each evidence item to a candidate change and map delivered evidence back to the contract in the ac-map; note any deviation if an item turns out to be N/A for a fix.
 3. Single Action (no splitting)
 4. Execute via TCR workflow
-5. Write back: update .roll/backlog.md status column + update FIX section in Feature file
+5. Write back: update the backlog authority status column + the FIX spec beneath the features authority
 
 Do not use for:
 
@@ -42,7 +42,7 @@ Before creating any file or directory:
 2. **Infer conventions from evidence** — don't assume a project type; observe what already exists
 3. **Follow what already exists** — introduce new patterns only when the current structure has no precedent
 
-> `roll init` no longer asks for project type. Skills are responsible for reading context and acting accordingly.
+> Project type is inferred only after the host supplies a verified Workspace/Issue handoff; this skill never initializes or discovers Workspace authority.
 
 ---
 
@@ -375,14 +375,14 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    "before".
 
 1. **Dump raw evidence** produced in this session to story-level dirs:
-   `.roll/features/<epic>/{ID}/screenshots/*.png` — the DEFAULT evidence class for
+   `context.authorities.evidence/<story-id>/screenshots/*.png` — the DEFAULT evidence class for
    every surface, **CLI included** (US-ATTEST-010): text evidence is the agent's
    own report (nothing stops a fabricated `echo "✓ passed" > evidence.txt`); a
    screenshot is an OS-level capture of really-rendered pixels — an independent
    channel with a categorically higher forgery cost. Combined with the
    never-overwritten run dirs (D4) and the render-layer red line, it is the
    strongest link in the evidence chain.
-   `.roll/features/<epic>/{ID}/evidence/*.txt` (resolve `<epic>` via `.roll/index.json`; `roll attest` writes the report there as `{ID}-report.html`) — supplementary (searchable,
+   `context.authorities.evidence/<story-id>/evidence/*.txt` (`roll attest` resolves the Story through the verified handoff and writes `{ID}-report.html`) — supplementary (searchable,
    copyable); keep raw command outputs here, but do not let a text file be the
    ONLY evidence for an AC that has a visible surface.
 
@@ -394,7 +394,7 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
    capture lane (deterministic), never hand-craft an image; if the capture channel is
    unavailable (no GUI session / no permission), fall back to text evidence and
    mark the AC `partial` with a note — never fake a screenshot.
-2. **Write the intent map** `.roll/features/<epic>/{ID}/ac-map.json` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
+2. **Write the intent map** at the Story evidence location resolved from `context.authorities.evidence` — for EVERY AC (ids `{ID}:AC1..n`) pick `pass|readonly|partial|claimed|missing` and reference only evidence that exists (paths relative to the run dir; story-level dirs are reachable as `../evidence/...` / `../screenshots/...`):
 
 ```json
 [{ "ac": "{ID}:AC1", "status": "pass",
@@ -405,7 +405,7 @@ Runs ONLY on a ✅ Gate PASS (a FAIL retry must not mint a misleading report). N
 ```
 
    No evidence for an AC → say `claimed` yourself; the renderer enforces that downgrade anyway (red line) and lists it under Discrepancies.
-3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands at `.roll/features/<epic>/{ID}/latest/{ID}-report.html` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + Review Score). A FIX usually carries a before/after pair (`screenshots/before-*.png` + `after-*.png`) — the坏态/好态 contrast is the clearest proof a bug is gone.
+3. **Run** `roll attest {ID}` (add `--deploy-url <url>` when one exists). The report lands beneath the Story location resolved from `context.authorities.evidence` (archive-per-card layout, US-META-001). The report is now layered (US-ATTEST-013): card context + conclusion/business badges + key screenshots up front, technical ANSI/command output folded into collapsed `<details>`, and a closing block (quality gate + evidence index + Review Score). A FIX usually carries a before/after pair (`screenshots/before-*.png` + `after-*.png`) — the坏态/好态 contrast is the clearest proof a bug is gone.
 4. **Design QA checklist (US-ATTEST-013) — READABILITY ONLY**. After the report
    renders, open it and run the checklist below. This is a presentation review of
    the rendered HTML, NOT an evidence review.
@@ -435,18 +435,18 @@ Only update when Hard Rule #6 conditions are met (user requested, affects roadma
 
 Both locations must be updated — neither can be skipped:
 
-**① Update .roll/backlog.md index row (Status column):**
+**① Update the `context.authorities.backlog` index row (Status column):**
 
-**Location rule (FIX-198)**: edit the MAIN project's backlog by ABSOLUTE path — `${ROLL_MAIN_PROJECT:-$PWD}/.roll/backlog.md`. In ordinary projects the cycle worktree has NO `.roll/` (gitignored, never checked out): a relative `.roll/backlog.md` edit writes into the void and the flip silently vanishes.
+**Location rule (FIX-198 superseded)**: edit only the absolute backlog authority supplied by the verified Workspace handoff. The shell cwd and repository layout are not backlog authority.
 
 
 ```markdown
-| [FIX-{ID}](.roll/features/<epic>/FIX-{ID}/spec.md) | {Title} | ✅ Done · [evidence](.roll/features/<epic>/FIX-{ID}/latest/FIX-{ID}-report.html) |
+| [FIX-{ID}](<features-authority>/<epic>/FIX-{ID}/spec.md) | {Title} | ✅ Done · [evidence](<evidence-authority>/<story-id>/latest/FIX-{ID}-report.html) |
 ```
 
 Change the Status of the corresponding row from `📋 Todo` or `🔨 In Progress` (whichever the row currently shows) to `✅ Done`. When invoked by `roll-loop`, the row will already be `🔨 In Progress` — that is the expected starting state.
 
-**② Update `.roll/features/<epic>/<story>/spec.md`:**
+**② Update the FIX spec resolved beneath `context.authorities.features`:**
 
 ```markdown
 ## FIX-{ID} {description} ✅
@@ -482,7 +482,7 @@ Summarize:
 - quality review outcome
 - verification results
 - any residual risk
-- **.roll/backlog.md updated** ✅
+- **`context.authorities.backlog` updated** ✅
 - **CHANGELOG.md updated** ✅
 
 ## Required Artifacts

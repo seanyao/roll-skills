@@ -44,7 +44,7 @@ You MUST NOT:
 - Silently rewrite routing, agent bindings, or policy from metrics.
 - Treat Builder self-report ("done", "all tests pass") as truth without event/PR/CI proof.
 - Collapse a "clear the backlog" goal to only the current failing FIX.
-- Hand-edit `.roll/backlog.md` or specs while loop workers are active without pausing first.
+- Hand-edit the backlog authority or Story specs while loop workers are active without pausing first.
 
 You MAY (deliberately, with naming):
 
