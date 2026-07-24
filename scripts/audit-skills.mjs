@@ -133,6 +133,12 @@ function csv(value) {
     .sort();
 }
 
+function frontmatterBoolean(value) {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return undefined;
+}
+
 function extractHandoffSection(body) {
   const heading = body.match(/^## Workspace Execution Handoff\s*$/mu);
   if (heading?.index === undefined) return "";
@@ -209,6 +215,8 @@ export function parseSkillFile(file) {
     workspaceContextScope: fields["workspace-context-scope"] ?? "",
     workspaceContextConsumer: fields["workspace-context-consumer"] ?? "",
     workspaceContextOperations: csv(fields["workspace-context-operations"]),
+    workspaceAllowsAmbientCwd: frontmatterBoolean(fields["workspace-allows-ambient-cwd"]),
+    workspaceAllowsLegacyRollPath: frontmatterBoolean(fields["workspace-allows-legacy-roll-path"]),
     workspaceHandoffSection: extractHandoffSection(body),
   };
 }
@@ -248,6 +256,8 @@ function workspaceHandoffViolationsFor(skill, routes) {
   const policyOperations = policies.map((policy) => policy.operation).sort();
   const policyScopes = [...new Set(policies.map((policy) => policy.scope))];
   const policyConsumers = [...new Set(policies.map((policy) => policy.contextConsumer ?? ""))];
+  const ambientPolicies = [...new Set(policies.map((policy) => policy.allowsAmbientCwd))];
+  const legacyPolicies = [...new Set(policies.map((policy) => policy.allowsLegacyRollPath))];
 
   if (skill.workspaceExecutionHandoff !== "required") violations.push("workspace-handoff-declaration-missing");
   if (policyScopes.length !== 1 || skill.workspaceContextScope !== policyScopes[0]) {
@@ -258,6 +268,12 @@ function workspaceHandoffViolationsFor(skill, routes) {
   }
   if (JSON.stringify(skill.workspaceContextOperations) !== JSON.stringify(policyOperations)) {
     violations.push("workspace-handoff-policy-mismatch:operations");
+  }
+  if (ambientPolicies.length !== 1 || skill.workspaceAllowsAmbientCwd !== ambientPolicies[0]) {
+    violations.push("workspace-handoff-policy-mismatch:allowsAmbientCwd");
+  }
+  if (legacyPolicies.length !== 1 || skill.workspaceAllowsLegacyRollPath !== legacyPolicies[0]) {
+    violations.push("workspace-handoff-policy-mismatch:allowsLegacyRollPath");
   }
 
   const section = skill.workspaceHandoffSection;

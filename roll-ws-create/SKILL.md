@@ -5,6 +5,8 @@ workspace-execution-handoff: required
 workspace-context-scope: machine_only
 workspace-context-consumer:
 workspace-context-operations: preview,apply
+workspace-allows-ambient-cwd: true
+workspace-allows-legacy-roll-path: false
 ---
 
 # Roll Workspace Create

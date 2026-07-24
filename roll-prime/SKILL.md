@@ -7,6 +7,8 @@ workspace-execution-handoff: required
 workspace-context-scope: workspace_required_read
 workspace-context-consumer: workspace
 workspace-context-operations: supervise
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Supervisor
 

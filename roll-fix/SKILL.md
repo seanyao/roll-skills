@@ -7,6 +7,8 @@ workspace-execution-handoff: required
 workspace-context-scope: issue_required
 workspace-context-consumer: issue
 workspace-context-operations: fix
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Fix
 

@@ -7,6 +7,8 @@ workspace-execution-handoff: required
 workspace-context-scope: workspace_required_mutation
 workspace-context-consumer: workspace
 workspace-context-operations: operate
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Loop
 
