@@ -101,19 +101,24 @@ assert.ok(wrongFamilyOutcome.includes("workspace-handoff-case-outcome-invalid:ar
 for (const [name, mutateRoutes, expectedViolation] of [
   [
     "missing prompt",
-    (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.promptContext = null; },
+    (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.promptContextFixture = null; },
     "workspace-handoff-case-execution-failed:arbitrary_cwd:missing_prompt_or_environment_context",
   ],
   [
     "prompt/env conflict",
-    (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.environmentContext.workspaceId = "other"; },
+    (routes) => {
+      const conflict = structuredClone(routes.workspaceExecutionContextFixtures.issue);
+      conflict.workspace.workspaceId = "other";
+      conflict.issue.execution.workspaceId = "other";
+      routes.workspaceHandoffCases["roll-build"][0].input.environmentContext = conflict;
+    },
     "workspace-handoff-case-execution-failed:arbitrary_cwd:prompt_environment_context_conflict",
   ],
   [
     "policy scope drift",
     (routes) => {
-      routes.workspaceHandoffCases["roll-build"][0].input.promptContext.scope = "workspace_required_read";
-      routes.workspaceHandoffCases["roll-build"][0].input.environmentContext.scope = "workspace_required_read";
+      routes.workspaceHandoffCases["roll-build"][0].input.promptContextFixture = "workspace";
+      routes.workspaceHandoffCases["roll-build"][0].input.environmentContextFixture = "workspace";
     },
     "workspace-handoff-case-execution-failed:arbitrary_cwd:context_scope_policy_mismatch",
   ],
@@ -187,10 +192,20 @@ const disguisedLegacyExecution = auditMutatedCoreFixture({
 });
 assert.ok(disguisedLegacyExecution.some((violation) => violation.startsWith("public-workspace-init:")));
 
+const unavailablePathCannotMaskExecution = auditMutatedCoreFixture({
+  skillName: "roll-ws-create",
+  addCarrier: {
+    path: "references/handoff-regression.md",
+    text: "No public workspace-init path is offered, but execute workspace-init now.\n",
+  },
+});
+assert.ok(unavailablePathCannotMaskExecution.some((violation) => violation.startsWith("public-workspace-init:")));
+
 for (const authorityText of [
   "Use .roll/evidence/screenshots as the evidence authority.",
   "Use .roll/runtime/state as the runtime authority.",
   "Use .roll/custom-authority/data as the current Workspace authority.",
+  "Use ../.roll/evidence as the evidence authority.",
   "Do not scan another Workspace, but use .roll/backlog.md as the current Workspace authority.",
 ]) {
   const violations = auditMutatedCoreFixture({

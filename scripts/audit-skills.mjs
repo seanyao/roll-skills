@@ -195,6 +195,7 @@ function routeCaseContractText(skillName, routes) {
     text: JSON.stringify({
       skillOperations: routes.skillOperations?.find((entry) => entry.id === skillName) ?? null,
       workspaceContextPolicies: (routes.workspaceContextPolicies ?? []).filter((policy) => policy.id === skillName),
+      workspaceExecutionContextFixtures: routes.workspaceExecutionContextFixtures ?? null,
       workspaceHandoffCases: routes.workspaceHandoffCases?.[skillName] ?? null,
       routes: routes.skills?.[skillName] ?? null,
     }, null, 2),
@@ -207,12 +208,46 @@ function explicitlyRejects(line, matchIndex) {
   );
 }
 
-function allowedCreateJournalReference(skillName, line) {
+function lastActionBefore(text, targetIndex, actions) {
+  const prefix = text.slice(0, targetIndex);
+  let last;
+  for (const match of prefix.matchAll(actions)) last = match;
+  return last;
+}
+
+function actionIsExplicitlyNegated(text, action) {
+  if (action?.index === undefined) return false;
+  return /(?:never|must\s+(?:not|never)|do(?:es)?\s+not|forbid(?:s|den)?)\s*$/iu.test(
+    text.slice(0, action.index),
+  );
+}
+
+function allowedPublicInitReference(skillName, clause, initIndex) {
+  const explicitlyUnavailable = /\bno\b[^.;]*\bworkspace[ -]init\b[^.;]*\b(?:path|command|surface|entry point)\b[^.;]*\b(?:is\s+)?(?:offered|advertised|provided|exposed)\b/giu;
+  for (const unavailable of clause.matchAll(explicitlyUnavailable)) {
+    if (unavailable.index === undefined) continue;
+    const referencedInit = unavailable[0].search(/\bworkspace[ -]init\b/iu);
+    if (referencedInit >= 0 && unavailable.index + referencedInit === initIndex) return true;
+  }
+
+  const action = lastActionBefore(
+    clause,
+    initIndex,
+    /\b(?:read|reconcile|run|execute|apply|invoke|offer|advertise|provide|expose)\b/giu,
+  );
+  if (action === undefined) return false;
+  if (actionIsExplicitlyNegated(clause, action)) return true;
   if (skillName !== "roll-ws-create") return false;
-  const dangerousExecution = line.match(/\b(?:run|execute|apply|invoke)\b/iu);
-  if (dangerousExecution?.index !== undefined && !explicitlyRejects(line, dangerousExecution.index)) return false;
-  return /\b(?:read|reconcile)\b/iu.test(line) &&
-    /(?:named|old|historical|legacy)[^.\n]*workspace[ -]init[^.\n]*journal/iu.test(line);
+  return /(?:named|old|historical|legacy)[^\n]*workspace[ -]init[^\n]*journal/iu.test(clause);
+}
+
+function relativeRollAuthorityIsRejected(line, pathIndex) {
+  const action = lastActionBefore(
+    line,
+    pathIndex,
+    /\b(?:use|read|write|derive|resolve|load|scan|inspect|edit|treat)\b/giu,
+  );
+  return actionIsExplicitlyNegated(line, action);
 }
 
 function staleAuthorityViolations(skillName, contractTexts) {
@@ -220,9 +255,14 @@ function staleAuthorityViolations(skillName, contractTexts) {
   for (const { relative, text } of contractTexts) {
     for (const [offset, line] of text.split(/\r?\n/u).entries()) {
       const location = `${relative}:${offset + 1}`;
-      const stalePath = line.match(/\.roll\/(?:backlog\.md|features\/|design\/|domain\/|loop\/|prime\.local\.md|agent-routes\.yaml|agents\.yaml|last-test-pass)/u);
-      if (stalePath?.index !== undefined && !explicitlyRejects(line, stalePath.index)) {
-        violations.push(`stale-workspace-authority:${location}`);
+      for (const stalePath of line.matchAll(/\.roll\/[A-Za-z0-9._/-]*/gu)) {
+        if (stalePath.index === undefined) continue;
+        const pathPrefix = line.slice(0, stalePath.index).match(/[^\s"'`()]*$/u)?.[0] ?? "";
+        if (pathPrefix.startsWith("/") || pathPrefix.startsWith("~/")) continue;
+        if (!relativeRollAuthorityIsRejected(line, stalePath.index)) {
+          violations.push(`stale-workspace-authority:${location}`);
+          break;
+        }
       }
       const ambientPwd = line.match(/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD|\bpwd\s+-P\b/u);
       if (ambientPwd?.index !== undefined && !explicitlyRejects(line, ambientPwd.index)) {
@@ -236,12 +276,18 @@ function staleAuthorityViolations(skillName, contractTexts) {
       if (localRollGit?.index !== undefined && !explicitlyRejects(line, localRollGit.index)) {
         violations.push(`repository-local-roll-authority:${location}`);
       }
-      const publicInit = line.match(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/iu);
-      if (
-        publicInit?.index !== undefined &&
-        !explicitlyRejects(line, publicInit.index) &&
-        !allowedCreateJournalReference(skillName, line)
-      ) {
+      let unsafePublicInit = false;
+      for (const clause of line.split(/[.;]/u)) {
+        for (const publicInit of clause.matchAll(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/giu)) {
+          if (publicInit.index === undefined) continue;
+          if (!allowedPublicInitReference(skillName, clause, publicInit.index)) {
+            unsafePublicInit = true;
+            break;
+          }
+        }
+        if (unsafePublicInit) break;
+      }
+      if (unsafePublicInit) {
         violations.push(`public-workspace-init:${location}`);
       }
       const globalCurrent = line.match(/global current Workspace/iu);
@@ -285,20 +331,111 @@ function canonicalJson(value) {
   return value;
 }
 
+function record(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : undefined;
+}
+
+function hasExactKeys(value, required, optional = []) {
+  const item = record(value);
+  if (item === undefined || required.some((key) => !Object.hasOwn(item, key))) return false;
+  const allowed = new Set([...required, ...optional]);
+  return Object.keys(item).every((key) => allowed.has(key));
+}
+
+function nonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
+}
+
+function validStringArray(value) {
+  return Array.isArray(value) && value.every(nonEmptyString);
+}
+
+function validRepositoryBinding(value) {
+  if (!hasExactKeys(value, ["schema", "repoId", "alias", "remote", "integrationBranch", "provider", "workflow"])) return false;
+  if (
+    value.schema !== "roll.repository-binding/v1" ||
+    ![value.repoId, value.alias, value.remote, value.integrationBranch, value.provider].every(nonEmptyString)
+  ) return false;
+  return hasExactKeys(value.workflow, ["branchPattern", "requiredChecks"]) &&
+    nonEmptyString(value.workflow.branchPattern) && validStringArray(value.workflow.requiredChecks);
+}
+
+function validMatchEvidence(value) {
+  if (!hasExactKeys(value, ["kind", "value", "hard", "score"])) return false;
+  return ["issue_exact", "requirement_source_exact", "repository_exact", "path_contained", "semantic_supported"].includes(value.kind) &&
+    nonEmptyString(value.value) && typeof value.hard === "boolean" && typeof value.score === "number";
+}
+
+const EXECUTION_AUTHORITY_KEYS = [
+  "backlog", "features", "design", "requirements", "policy", "evidence", "toolDumps", "events", "runtime", "locks",
+];
+
+function validAuthorities(value) {
+  return hasExactKeys(value, EXECUTION_AUTHORITY_KEYS) && EXECUTION_AUTHORITY_KEYS.every((key) => nonEmptyString(value[key]));
+}
+
+function validContexts(value) {
+  if (!hasExactKeys(value, ["enabled", "bindings"]) || typeof value.enabled !== "boolean" || !Array.isArray(value.bindings)) {
+    return false;
+  }
+  return value.bindings.every((binding) =>
+    hasExactKeys(binding, ["providerId", "enabled", "required", "entrypoints"]) &&
+    nonEmptyString(binding.providerId) && typeof binding.enabled === "boolean" &&
+    typeof binding.required === "boolean" && validStringArray(binding.entrypoints));
+}
+
+function validRepositoryExecution(value) {
+  if (!hasExactKeys(
+    value,
+    ["repoId", "alias", "access", "requiredDelivery", "worktreePath", "baseSha", "headSha", "commands"],
+    ["noChangePolicy", "dependsOnRepo"],
+  )) return false;
+  if (
+    !nonEmptyString(value.repoId) ||
+    !nonEmptyString(value.alias) ||
+    !["read", "write"].includes(value.access) ||
+    typeof value.requiredDelivery !== "boolean" ||
+    ![value.worktreePath, value.baseSha, value.headSha].every(nonEmptyString)
+  ) return false;
+  if (value.noChangePolicy !== undefined && !["changes_required", "no_change_allowed"].includes(value.noChangePolicy)) return false;
+  if (value.dependsOnRepo !== undefined && !nonEmptyString(value.dependsOnRepo)) return false;
+  return hasExactKeys(value.commands, ["test", "integration"]) &&
+    validStringArray(value.commands.test) && validStringArray(value.commands.integration);
+}
+
+function validIssue(value, workspaceId) {
+  if (!hasExactKeys(value, ["storyId", "manifestPath", "execution"])) return false;
+  if (!nonEmptyString(value.storyId) || !nonEmptyString(value.manifestPath)) return false;
+  const execution = value.execution;
+  if (!hasExactKeys(execution, ["workspaceId", "issueRoot", "repositories"])) return false;
+  if (execution.workspaceId !== workspaceId || !nonEmptyString(execution.issueRoot)) return false;
+  const repositories = record(execution.repositories);
+  return repositories !== undefined && Object.entries(repositories).every(([repoId, repository]) =>
+    validRepositoryExecution(repository) && repository.repoId === repoId);
+}
+
 function parseExecutionContext(value) {
   try {
     const parsed = typeof value === "string" ? JSON.parse(value) : structuredClone(value);
+    if (!hasExactKeys(parsed, ["schema", "workspace", "resolution", "bindings", "authorities"], ["contexts", "issue"])) return { ok: false };
+    if (parsed.schema !== "roll.workspace-execution-context/v1") return { ok: false };
+    if (!hasExactKeys(parsed.workspace, ["workspaceId", "root", "canonicalRoot", "lifecycle"])) return { ok: false };
     if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      parsed.schema !== "roll.workspace-execution-context/v1" ||
-      typeof parsed.workspaceId !== "string" ||
-      parsed.workspaceId.length === 0 ||
-      typeof parsed.scope !== "string" ||
-      parsed.scope.length === 0
-    ) {
-      return { ok: false };
-    }
+      !nonEmptyString(parsed.workspace.workspaceId) ||
+      !nonEmptyString(parsed.workspace.root) ||
+      !nonEmptyString(parsed.workspace.canonicalRoot) ||
+      !["registered", "active", "paused", "archived"].includes(parsed.workspace.lifecycle)
+    ) return { ok: false };
+    if (!hasExactKeys(parsed.resolution, ["source", "evidence"])) return { ok: false };
+    if (
+      !["explicit", "environment", "cwd_manifest", "issue_manifest", "requirement_discovery"].includes(parsed.resolution.source) ||
+      !Array.isArray(parsed.resolution.evidence) ||
+      !parsed.resolution.evidence.every(validMatchEvidence)
+    ) return { ok: false };
+    if (!Array.isArray(parsed.bindings) || !parsed.bindings.every(validRepositoryBinding)) return { ok: false };
+    if (!validAuthorities(parsed.authorities)) return { ok: false };
+    if (parsed.contexts !== undefined && !validContexts(parsed.contexts)) return { ok: false };
+    if (parsed.issue !== undefined && !validIssue(parsed.issue, parsed.workspace.workspaceId)) return { ok: false };
     return { ok: true, value: parsed };
   } catch {
     return { ok: false };
@@ -317,7 +454,10 @@ function validateContextPair(input, expectedScope) {
   if (JSON.stringify(canonicalJson(prompt.value)) !== JSON.stringify(canonicalJson(environment.value))) {
     return { decision: "workspace_context_conflict", proofs: [], failures: ["prompt_environment_context_conflict"] };
   }
-  if (expectedScope !== undefined && prompt.value.scope !== expectedScope) {
+  if (
+    ["issue_required", "repository_required"].includes(expectedScope) &&
+    prompt.value.issue === undefined
+  ) {
     return { decision: "workspace_context_scope_mismatch", proofs: ["prompt_env_semantic_identity"], failures: ["context_scope_policy_mismatch"] };
   }
   return { proofs: ["prompt_env_semantic_identity"], failures: [], contextValue: prompt.value };
@@ -444,8 +584,8 @@ export function evaluateWorkspaceHandoffCase(
       return { decision: "ambient_authority_forbidden", proofs: context.proofs, failures: ["authority_not_from_handoff"] };
     }
     if (Array.isArray(expectedAuthorityCategories)) {
-      const actual = Array.isArray(input.authorityCategories) ? [...new Set(input.authorityCategories)].sort() : [];
-      if (JSON.stringify(actual) !== JSON.stringify(expectedAuthorityCategories)) {
+      const actual = Object.keys(context.contextValue.authorities);
+      if (!expectedAuthorityCategories.every((category) => actual.includes(category))) {
         return { decision: "authority_contract_incomplete", proofs: [...context.proofs, "handoff_authority"], failures: ["authority_categories_mismatch"] };
       }
     }
@@ -460,14 +600,14 @@ export function evaluateWorkspaceHandoffCase(
   }
 
   if (caseName === "explicit_selector") {
+    const contextWorkspaceId = context.contextValue.workspace.workspaceId;
+    const contextStoryId = context.contextValue.issue?.storyId ?? null;
     if (
-      input.explicitWorkspaceId !== input.resolvedWorkspaceId ||
-      context.contextValue.workspaceId !== input.resolvedWorkspaceId ||
-      context.contextValue.storyId !== input.storyId
+      input.explicitWorkspaceId !== contextWorkspaceId
     ) {
       return { decision: "workspace_context_conflict", proofs: context.proofs, failures: ["explicit_workspace_mismatch"] };
     }
-    if (input.retryWorkspaceId !== input.resolvedWorkspaceId || input.retryStoryId !== input.storyId) {
+    if (input.retryWorkspaceId !== contextWorkspaceId || input.retryStoryId !== contextStoryId) {
       return { decision: "retry_identity_conflict", proofs: [...context.proofs, "explicit_workspace_identity"], failures: ["retry_identity_changed"] };
     }
     return {
@@ -492,15 +632,27 @@ export function evaluateWorkspaceHandoffCase(
   }
 
   if (caseName === "multi_repo") {
-    if (!Number.isInteger(input.repositoryCount) || input.repositoryCount < 1) {
+    const repositories = context.contextValue.issue?.execution?.repositories;
+    if (repositories === undefined) {
       return { decision: "missing_execution_context", proofs: context.proofs, failures: ["repository_execution_map_missing"] };
     }
-    if (input.repositoryCount > 1 && (input.repositorySelector == null || input.repositorySelector === "")) {
+    const repositoryCount = Object.keys(repositories).length;
+    if (repositoryCount < 1) {
+      return { decision: "missing_execution_context", proofs: context.proofs, failures: ["repository_execution_map_missing"] };
+    }
+    if (repositoryCount > 1 && (input.repositorySelector == null || input.repositorySelector === "")) {
       return {
         decision: "stop_without_repository_selector",
         proofs: [...context.proofs, "multi_repo_fail_closed"],
         failures: [],
       };
+    }
+    if (
+      input.repositorySelector != null &&
+      !Object.values(repositories).some((repository) =>
+        repository.repoId === input.repositorySelector || repository.alias === input.repositorySelector)
+    ) {
+      return { decision: "invalid_repository_selector", proofs: context.proofs, failures: ["repository_selector_not_in_context"] };
     }
     return {
       decision: "use_selected_repository",
@@ -534,14 +686,24 @@ function workspaceHandoffCaseResultsFor(skill, routes) {
   const expectedScope = policyScopes.length === 1 ? policyScopes[0] : undefined;
 
   return cases.map((item) => {
+    const input = structuredClone(item.input ?? null);
+    if (input !== null && typeof input === "object") {
+      for (const target of ["promptContext", "environmentContext"]) {
+        const fixtureKey = `${target}Fixture`;
+        if (input[target] === undefined && typeof input[fixtureKey] === "string") {
+          input[target] = structuredClone(routes.workspaceExecutionContextFixtures?.[input[fixtureKey]]);
+        }
+        delete input[fixtureKey];
+      }
+    }
     const expected = expectedHandoffOutcome(skill.name, item.case);
-    const evaluation = evaluateWorkspaceHandoffCase(skill.name, item.case, item.input, {
+    const evaluation = evaluateWorkspaceHandoffCase(skill.name, item.case, input, {
       expectedScope,
       expectedAuthorityCategories: REQUIRED_AUTHORITY_CATEGORIES[skill.name],
     });
     return {
       case: item.case,
-      input: structuredClone(item.input ?? null),
+      input,
       expected,
       actual: evaluation.decision,
       proofs: evaluation.proofs,

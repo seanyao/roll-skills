@@ -121,18 +121,23 @@ test("deterministic handoff evaluator fails closed on missing, conflict, multi-r
     ...arbitrary,
     promptContext: { schema: "roll.workspace-execution-context/v1", workspaceId: "roll", storyId: null, scope: "workspace_required_mutation" },
     environmentContext: { schema: "roll.workspace-execution-context/v1", workspaceId: "roll", storyId: null, scope: "workspace_required_mutation" },
-  }, { expectedScope: "workspace_required_mutation" }).decision, "workspace_context_scope_mismatch");
+  }, { expectedScope: "workspace_required_mutation" }).decision, "invalid_workspace_context");
+  assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
+    ...arbitrary,
+    promptContext: { ...arbitrary.promptContext, contexts: {} },
+    environmentContext: { ...arbitrary.environmentContext, contexts: {} },
+  }).decision, "invalid_workspace_context");
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
     rediscoveryAttempted: true,
   }).decision, "workspace_rediscovery_forbidden");
-  assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
-    ...arbitrary,
-    authorityCategories: arbitrary.authorityCategories.filter((category) => category !== "evidence"),
-  }, {
+  const incompleteAuthorities = structuredClone(arbitrary);
+  delete incompleteAuthorities.promptContext.authorities.evidence;
+  delete incompleteAuthorities.environmentContext.authorities.evidence;
+  assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", incompleteAuthorities, {
     expectedScope: "workspace_required_mutation",
     expectedAuthorityCategories: requiredAuthorityCategories["roll-design"],
-  }).decision, "authority_contract_incomplete");
+  }).decision, "invalid_workspace_context");
   assert.equal(evaluateWorkspaceHandoffCase("roll-build", "multi_repo", multiRepo).decision, "stop_without_repository_selector");
   assert.equal(Object.hasOwn(multiRepo, "repositoryCount"), false, "repository cardinality must come from context.issue.execution.repositories");
   assert.equal(evaluateWorkspaceHandoffCase("roll-build", "multi_repo", {
@@ -166,12 +171,7 @@ test("machine-only Workspace creation uses an explicit create handoff from arbit
 
   const explicit = createSkill.workspaceHandoffCaseResults.find((result) => result.case === "explicit_selector").input;
   const createPreview = createSkill.workspaceHandoffCaseResults.find((result) => result.case === "arbitrary_cwd").input;
-  const optionalContext = {
-    schema: "roll.workspace-execution-context/v1",
-    workspaceId: "roll",
-    storyId: null,
-    scope: "machine_only",
-  };
+  const optionalContext = structuredClone(manifest.workspaceExecutionContextFixtures.workspace);
   assert.equal(evaluateWorkspaceHandoffCase("roll-ws-create", "arbitrary_cwd", {
     ...createPreview,
     promptContext: optionalContext,
@@ -179,7 +179,10 @@ test("machine-only Workspace creation uses an explicit create handoff from arbit
   assert.equal(evaluateWorkspaceHandoffCase("roll-ws-create", "arbitrary_cwd", {
     ...createPreview,
     promptContext: optionalContext,
-    environmentContext: { ...optionalContext, workspaceId: "other" },
+    environmentContext: {
+      ...optionalContext,
+      workspace: { ...optionalContext.workspace, workspaceId: "other" },
+    },
   }).decision, "workspace_context_conflict");
   assert.equal(evaluateWorkspaceHandoffCase("roll-ws-create", "explicit_selector", {
     ...explicit,
