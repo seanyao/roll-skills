@@ -2,7 +2,7 @@
 name: roll-prime
 license: MIT
 allowed-tools: "Read, Glob, Grep, Bash(git:*), Bash(roll:*), Bash(node:*), Bash(tmux:*), Bash(tail:*), Bash(rg:*), Skill, Agent"
-description: "Load when coordinating a Roll project as Supervisor (supervise role): reconcile backlog truth, advise the owner, dispatch the Delta Team, watch cycles read-only, diagnose structural failures, and reconcile .roll meta — not when implementing a Story as Builder."
+description: "Load when coordinating a Roll project as Supervisor (supervise role): reconcile backlog truth, advise the owner, dispatch the Delta Team, watch cycles read-only, diagnose structural failures, and reconcile Workspace metadata — not when implementing a Story as Builder."
 workspace-execution-handoff: required
 workspace-context-scope: workspace_required_read
 workspace-context-consumer: workspace
@@ -24,7 +24,7 @@ Load the full supervisor contract only when you are actively coordinating.
 
 Load when coordinating a Roll project as **Supervisor** (`supervise` role) in guided
 mode: clearing backlog scope, watching loop cycles, diagnosing failures,
-salvaging gates, or reconciling `.roll` meta — **not** when implementing a
+salvaging gates, or reconciling Workspace metadata — **not** when implementing a
 Story as Builder (`roll-build` / `roll-fix`).
 
 ## Operating Modes
@@ -55,13 +55,13 @@ Story as Builder (`roll-build` / `roll-fix`).
 ## Workflow Skeleton
 
 1. Lock explicit backlog scope (US + FIX + REFACTOR unless owner narrows).
-2. Reconcile truth (`supervisor next/why`, git main + `.roll`, events, PRs).
+2. Reconcile truth (`supervisor next/why`, git main plus Workspace metadata, events, PRs).
 3. Select next card; explain cast (Designer / Builder / Evaluator / Peers).
 4. Clean gate → `roll loop go --cards <id> --max-cycles 1`.
 5. Watch cycles read-only (events + worktree; 0 TCR ≠ auto-fail if still moving).
 6. Stop on structural failure; diagnose before blind retry.
 7. Salvage deliberately (`repair-evidence`, recover, independent evaluator).
-8. Reconcile `.roll` meta after product truth (PR/CI/main).
+8. Reconcile Workspace metadata after product truth (PR/CI/main).
 
 ## Hard Gates
 

@@ -222,30 +222,33 @@ function actionIsExplicitlyNegated(text, action) {
   );
 }
 
-function allowedPublicInitReference(skillName, clause, initIndex) {
-  const explicitlyUnavailable = /\bno\b[^.;]*\bworkspace[ -]init\b[^.;]*\b(?:path|command|surface|entry point)\b[^.;]*\b(?:is\s+)?(?:offered|advertised|provided|exposed)\b/giu;
-  for (const unavailable of clause.matchAll(explicitlyUnavailable)) {
-    if (unavailable.index === undefined) continue;
-    const referencedInit = unavailable[0].search(/\bworkspace[ -]init\b/iu);
-    if (referencedInit >= 0 && unavailable.index + referencedInit === initIndex) return true;
-  }
-
+function allowedLegacyJournalReference(skillName, clause, initIndex) {
+  if (skillName !== "roll-ws-create") return false;
   const action = lastActionBefore(
     clause,
     initIndex,
-    /\b(?:read|reconcile|run|execute|apply|invoke|offer|advertise|provide|expose)\b/giu,
+    /\b(?:read|reconcile|run|running|execute|executing|apply|applying|invoke|invoking|launch|launching|inspect|inspecting|offer|advertise|provide|expose)\b/giu,
   );
-  if (action === undefined) return false;
-  if (actionIsExplicitlyNegated(clause, action)) return true;
-  if (skillName !== "roll-ws-create") return false;
-  return /(?:named|old|historical|legacy)[^\n]*workspace[ -]init[^\n]*journal/iu.test(clause);
+  if (action?.index === undefined || !/^(?:read|reconcile)$/iu.test(action[0])) return false;
+  return /\b(?:read|reconcile)\b[^.;]*\b(?:named|old|historical|legacy)\b[^.;]*\bworkspace[ -]init\b[^.;]*\bjournal\b/iu.test(
+    clause.slice(action.index),
+  );
 }
 
 function relativeRollAuthorityIsRejected(line, pathIndex) {
   const action = lastActionBefore(
     line,
     pathIndex,
-    /\b(?:use|read|write|derive|resolve|load|scan|inspect|edit|treat)\b/giu,
+    /\b(?:use|read|write|derive|resolve|load|scan|inspect|edit|treat|discover|rediscover|migrate)\b/giu,
+  );
+  return actionIsExplicitlyNegated(line, action);
+}
+
+function ambientAuthorityIsRejected(line, pathIndex) {
+  const action = lastActionBefore(
+    line,
+    pathIndex,
+    /\b(?:use|read|write|derive|resolve|load|scan|inspect|edit|treat|run|execute|invoke|reconcile)\b/giu,
   );
   return actionIsExplicitlyNegated(line, action);
 }
@@ -255,7 +258,7 @@ function staleAuthorityViolations(skillName, contractTexts) {
   for (const { relative, text } of contractTexts) {
     for (const [offset, line] of text.split(/\r?\n/u).entries()) {
       const location = `${relative}:${offset + 1}`;
-      for (const stalePath of line.matchAll(/\.roll\/[A-Za-z0-9._/-]*/gu)) {
+      for (const stalePath of line.matchAll(/(?<![A-Za-z0-9_-])\.roll(?:\/[A-Za-z0-9._/-]*)?(?![A-Za-z0-9_-])/gu)) {
         if (stalePath.index === undefined) continue;
         const pathPrefix = line.slice(0, stalePath.index).match(/[^\s"'`()]*$/u)?.[0] ?? "";
         if (pathPrefix.startsWith("/") || pathPrefix.startsWith("~/")) continue;
@@ -265,22 +268,22 @@ function staleAuthorityViolations(skillName, contractTexts) {
         }
       }
       const ambientPwd = line.match(/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD|\bpwd\s+-P\b/u);
-      if (ambientPwd?.index !== undefined && !explicitlyRejects(line, ambientPwd.index)) {
+      if (ambientPwd?.index !== undefined && !ambientAuthorityIsRejected(line, ambientPwd.index)) {
         violations.push(`ambient-pwd-authority:${location}`);
       }
       const fixedLoopRuntime = line.match(/~\/\.shared\/roll\/loop\//u);
-      if (fixedLoopRuntime?.index !== undefined && !explicitlyRejects(line, fixedLoopRuntime.index)) {
+      if (fixedLoopRuntime?.index !== undefined && !ambientAuthorityIsRejected(line, fixedLoopRuntime.index)) {
         violations.push(`fixed-loop-runtime-authority:${location}`);
       }
       const localRollGit = line.match(/git\s+-C\s+`?\.roll(?:\s|`|$)/iu);
-      if (localRollGit?.index !== undefined && !explicitlyRejects(line, localRollGit.index)) {
+      if (localRollGit?.index !== undefined && !ambientAuthorityIsRejected(line, localRollGit.index)) {
         violations.push(`repository-local-roll-authority:${location}`);
       }
       let unsafePublicInit = false;
       for (const clause of line.split(/[.;]/u)) {
         for (const publicInit of clause.matchAll(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/giu)) {
           if (publicInit.index === undefined) continue;
-          if (!allowedPublicInitReference(skillName, clause, publicInit.index)) {
+          if (!allowedLegacyJournalReference(skillName, clause, publicInit.index)) {
             unsafePublicInit = true;
             break;
           }
@@ -361,9 +364,12 @@ function validRepositoryBinding(value) {
 }
 
 function validMatchEvidence(value) {
-  if (!hasExactKeys(value, ["kind", "value", "hard", "score"])) return false;
+  if (!hasExactKeys(value, ["kind", "value", "hard", "score", "source", "provenance", "detail"])) return false;
   return ["issue_exact", "requirement_source_exact", "repository_exact", "path_contained", "semantic_supported"].includes(value.kind) &&
-    nonEmptyString(value.value) && typeof value.hard === "boolean" && typeof value.score === "number";
+    nonEmptyString(value.value) && typeof value.hard === "boolean" && typeof value.score === "number" &&
+    nonEmptyString(value.source) && [
+      "explicit_user", "cli_argument", "issue_manifest", "cwd_repository", "deterministic_extraction", "semantic_inference",
+    ].includes(value.provenance) && nonEmptyString(value.detail);
 }
 
 const EXECUTION_AUTHORITY_KEYS = [
@@ -475,6 +481,12 @@ function validCreateTuple(tuple) {
     typeof tuple?.planSha256 === "string" && /^[a-f0-9]{64}$/u.test(tuple.planSha256);
 }
 
+function validCreateAuthorization(value) {
+  return hasExactKeys(value, ["schema", "source", "workspaceId", "configSha256", "planSha256"]) &&
+    value.schema === "roll.workspace-create-apply-authorization/v1" && value.source === "owner_after_preview" &&
+    validCreateTuple(value);
+}
+
 export function evaluateWorkspaceHandoffCase(
   skillName,
   caseName,
@@ -518,10 +530,7 @@ export function evaluateWorkspaceHandoffCase(
       if (input.naturalLanguageIntentOnly === true || input.authorization == null) {
         return { decision: "preview_only", proofs: ["exact_preview_tuple", "natural_language_apply_rejected"], failures: ["apply_authorization_missing"] };
       }
-      if (
-        input.authorization.schema !== "roll.workspace-create-apply-authorization/v1" ||
-        input.authorization.source !== "owner_after_preview"
-      ) {
+      if (!validCreateAuthorization(input.authorization)) {
         return { decision: "invalid_create_authorization", proofs: ["exact_preview_tuple"], failures: ["invalid_authorization_contract"] };
       }
       if (!sameCreateTuple(input.preview, input.authorization) || !sameCreateTuple(input.preview, input.retryPreview)) {

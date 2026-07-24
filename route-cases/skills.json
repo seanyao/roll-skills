@@ -54,7 +54,7 @@
     "workspace": {
       "schema": "roll.workspace-execution-context/v1",
       "workspace": { "workspaceId": "roll", "root": "/workspace/roll", "canonicalRoot": "/workspace/roll", "lifecycle": "active" },
-      "resolution": { "source": "explicit", "evidence": [] },
+      "resolution": { "source": "explicit", "evidence": [{ "kind": "requirement_source_exact", "value": "jira:APE-234", "hard": true, "score": 100, "source": "jira:APE-234", "provenance": "explicit_user", "detail": "The explicit Workspace selector and requirement source identify the same Workspace." }] },
       "bindings": [
         { "schema": "roll.repository-binding/v1", "repoId": "repo-product", "alias": "product", "remote": "https://example.test/product.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } },
         { "schema": "roll.repository-binding/v1", "repoId": "repo-skills", "alias": "skills", "remote": "https://example.test/skills.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } }
@@ -64,7 +64,7 @@
     "issue": {
       "schema": "roll.workspace-execution-context/v1",
       "workspace": { "workspaceId": "roll", "root": "/workspace/roll", "canonicalRoot": "/workspace/roll", "lifecycle": "active" },
-      "resolution": { "source": "issue_manifest", "evidence": [] },
+      "resolution": { "source": "issue_manifest", "evidence": [{ "kind": "issue_exact", "value": "US-WS-037", "hard": true, "score": 100, "source": "/workspace/roll/issues/US-WS-037/manifest.json", "provenance": "issue_manifest", "detail": "The Issue manifest exactly identifies this Story and Workspace." }] },
       "bindings": [
         { "schema": "roll.repository-binding/v1", "repoId": "repo-product", "alias": "product", "remote": "https://example.test/product.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } },
         { "schema": "roll.repository-binding/v1", "repoId": "repo-skills", "alias": "skills", "remote": "https://example.test/skills.git", "integrationBranch": "main", "provider": "generic", "workflow": { "branchPattern": "roll/{workspace_id}/{story_id}", "requiredChecks": [] } }

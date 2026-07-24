@@ -62,7 +62,7 @@ modes.
 - Run reproduction, test, Git, and delivery commands only in a repository from `context.issue.execution.repositories`. If more than one repository exists and the handoff names no repository ID or alias, STOP with `missing_execution_context`; never choose the first entry.
 - On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or create one inside this skill.
 - Retry and continuation keep the same Workspace and Issue/Story identity, repository selection, and authority paths from the verified handoff. A different identity requires a new host handoff.
-- Legacy migration may be handled only through an explicit `legacy_migration_only` handoff; legacy layout is input evidence, never repair authority, and no public Workspace init path is offered.
+- Legacy migration may be handled only through an explicit `legacy_migration_only` handoff; legacy layout is input evidence, never repair authority, and no public initialization entry point is offered.
 
 ## Context Snapshot Handoff
 

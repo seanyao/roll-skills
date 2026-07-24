@@ -72,7 +72,7 @@ bypasses pause, budget, route, evidence, Evaluator, or release gates.
 - Freeze each dispatched Issue identity and run commands only through that Issue's `context.issue.execution.repositories`. If more than one repository exists and the handoff names no repository ID or alias, STOP with `missing_execution_context`; never choose the first entry.
 - On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or create one inside this skill.
 - Retry and continuation keep the same Workspace and Issue/Story identity for the whole cycle; changing cwd or starting a new process never changes the frozen identity.
-- Legacy migration may run only as an explicit `legacy_migration_only` operation outside the normal loop; legacy runtime or backlog layout is never loop authority and no public Workspace init path is offered.
+- Legacy migration may run only as an explicit `legacy_migration_only` operation outside the normal loop; legacy runtime or backlog layout is never loop authority and no public initialization entry point is offered.
 
 ## Maintenance
 

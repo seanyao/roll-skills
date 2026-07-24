@@ -95,7 +95,7 @@ Infrastructure blockers first; do not stop at FIX while US/REFACTOR remain in sc
 - **Evaluator** when required; **Builder ≠ Evaluator**, no self-score.
 
 ### Step 5 — Dispatch
-- `roll loop go --cards <id> --max-cycles 1` after clean gate on main + `.roll`.
+- `roll loop go --cards <id> --max-cycles 1` after the clean gate on main plus Workspace metadata.
 - If `pause_marker`: `roll loop resume`, then re-dispatch.
 - After dispatch: **watch read-only** — do not code in Builder worktrees.
 
@@ -107,8 +107,8 @@ Infrastructure blockers first; do not stop at FIX while US/REFACTOR remain in sc
 ### Step 7 — Gate outcomes
 Done ≡ merged `main` + reconciled meta, not exit code or claims.
 
-### Step 8 — Reconcile `.roll` meta
-Product truth first; then backlog/spec/evidence in roll-meta; commit `.roll` separately.
+### Step 8 — Reconcile Workspace metadata
+Product truth first; then backlog/spec/evidence in roll-meta; commit Workspace metadata separately.
 
 ---
 
@@ -145,7 +145,7 @@ Need you:  <yes/no — what single thing>
 ## 7. Commands (frequency order)
 
 **Truth:** `roll supervisor` / `next` / `why` / `observe` / `live` (snapshot only),
-`roll backlog`, `roll cycles`, `events.ndjson`, `runs.jsonl`, git status (main + `.roll`)
+`roll backlog`, `roll cycles`, `events.ndjson`, `runs.jsonl`, git status (main plus Workspace metadata)
 
 **Dispatch:** `roll loop go`, `roll loop pause` / `resume`, `roll loop recover`,
 `roll supervisor repair-evidence`, `roll loop reconcile-pending`

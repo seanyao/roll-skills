@@ -11,7 +11,7 @@ coordination session.
 
 ## Explorer rules
 
-- **Read-only.** No edits to product repo, Builder worktrees, or `.roll` meta.
+- **Read-only.** No edits to product repo, Builder worktrees, or Workspace metadata.
 - **No dispatch.** Do not `loop go`, `recover`, or `repair-evidence`.
 - **Evidence only.** Output: conclusion + file:line + event refs + recommended
   Supervisor action (recover / salvage / FIX card / owner).
