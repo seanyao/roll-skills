@@ -2,6 +2,9 @@
 
 This file preserves the detailed contract extracted from SKILL.md. Read it when the hub points here for exact workflow steps, templates, rubrics, or recovery branches.
 
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
+Every `roll init` mention in this carrier is diagnostic example text and never executable Workspace authority.
+
 ---
 
 # Roll Peer (Cross-Agent Peer Review)
@@ -247,7 +250,7 @@ When peer review is manually triggered by a human (via `/peer`, "叫上 peer", e
 - Relay the peer's response **verbatim** before adding your own analysis.
 - After the peer's reply, the reviewer's own analysis block must explicitly state whether the peer's root cause and fix direction match the reviewer's own (independent) conclusion — that comparison is what determines the next round's action.
 - If a peer call fails or times out, report it immediately inline and either retry or ESCALATE.
-- Negotiation log is written to `<project>/.roll/peer/logs/` as usual.
+- Negotiation log is written beneath the current Issue evidence path supplied by `context.authorities.evidence`.
 
 **Why inline, not tmux:** When a human manually triggers peer review inside an agent's interactive session, the conversation IS the visible interface. tmux auto-attach is only relevant for CLI-launched background sessions (`bin/roll peer`), not for skill invocations.
 
@@ -278,10 +281,10 @@ When Attacker and Defender reach a stalemate (both tests pass but interpretation
 
 ## Output Artifacts
 
-- **Negotiation log**: `<project>/.roll/peer/logs/<timestamp>_<from>_<to>.md`
-- **Structured record**: `<project>/.roll/peer/runs.jsonl`
+- **Negotiation log**: `<context.authorities.evidence>/peer/logs/<timestamp>_<from>_<to>.md`
+- **Structured record**: `<context.authorities.evidence>/peer/runs.jsonl`
 - **State file**: `~/.roll/.peer-state/`
-- **Decision record**: If AGREE, append summary to `docs/decisions/` or `.roll/backlog.md` (optional)
+- **Decision record**: If AGREE, return the summary to the host; only the host may persist it through the Issue or Workspace authority selected for the calling operation.
 
 ## Configuration
 
@@ -306,7 +309,7 @@ peer:
 
 ## Limitations
 
-1. **Reverse link reliability**: Direct CLI calls are preferred. Reliability varies by tool — see Peer Invocation Reference table. If a peer fails consistently, the adaptive streak tracker marks it `abandoned` and falls back to the next candidate. File mailbox (`<project>/.roll/peer/mailbox/`) is the last-resort fallback.
+1. **Reverse link reliability**: Direct CLI calls are preferred. Reliability varies by tool — see Peer Invocation Reference table. If a peer fails consistently, the adaptive streak tracker marks it `abandoned` and falls back to the next candidate. A file mailbox under `<context.authorities.evidence>/peer/mailbox/` is the last-resort fallback.
    - `codex exec` has known TTY/Ink issues in non-interactive environments; treat as low-priority fallback.
 2. **Cost**: Every peer review consumes tokens on both sides. Only trigger for tasks where the cost of a wrong decision exceeds the cost of peer review.
 3. **Context window**: Large project handoff cards may consume significant context. Keep file pointers concise.

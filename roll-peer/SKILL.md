@@ -3,6 +3,12 @@ name: roll-peer
 license: MIT
 allowed-tools: "Read, Bash, Write, Edit"
 description: "Load when the user explicitly asks for peer review, cross-agent negotiation, /peer, or a high-risk decision needs an external agent perspective."
+workspace-execution-handoff: required
+workspace-context-scope: policy_driven
+workspace-context-consumer: policy_driven
+workspace-context-operations: record_evidence, review
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Peer
 
@@ -58,3 +64,11 @@ Load when the user explicitly asks for peer review, cross-agent negotiation, /pe
 ## Role in v4 execution profiles
 
 Cross-agent peer review is an **Evaluator capability**: an independent fresh-session reviewer (never the Builder's session) scores the delivery. The Evaluator's judgment is binding for story satisfaction; peer negotiation is the mechanism. In `verified`/`designed` profiles this feeds the `eval-report.md`. Fresh-session independence is required; agent/model diversity is a preference or explicit owner-requested mode, not a default brand rejection. Roles: Supervisor / Designer / Builder / Evaluator.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- Read code only from the selected `context.issue.execution.repositories` entry identified by repository ID or alias; persist `record_evidence` only through `context.authorities`.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

@@ -4,23 +4,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const CORE_WORKSPACE_HANDOFF_SKILLS = [
-  "roll-design",
-  "roll-build",
-  "roll-fix",
-  "roll-loop",
-  "roll-prime",
-  "roll-ws-create",
-];
-
-const WORKSPACE_HANDOFF_TAXONOMY = {
-  arbitrary_cwd: "use_handoff_authorities",
-  explicit_selector: "use_verified_explicit_identity",
-  requirement_mismatch: "stop_and_route_workspace_target",
-  multi_repo: "stop_without_repository_selector",
-  legacy_boundary: "legacy_migration_only",
-};
-
 const WORKSPACE_REQUIREMENT_FAILURE_CODES = new Set([
   "requirement_match_required",
   "ambiguous_requirement_match",
@@ -36,19 +19,6 @@ const REQUIRED_AUTHORITY_CATEGORIES = {
   "roll-prime": ["backlog", "design", "events", "evidence", "features", "policy", "runtime"],
   "roll-ws-create": [],
 };
-
-function expectedHandoffOutcome(skillName, taxonomy) {
-  if (skillName === "roll-ws-create") {
-    return {
-      arbitrary_cwd: "use_explicit_create_preview",
-      explicit_selector: "use_explicit_create_identity",
-      requirement_mismatch: "stop_and_route_workspace_target",
-      multi_repo: "validate_all_create_config_bindings",
-      legacy_boundary: "reconcile_named_legacy_journals_only",
-    }[taxonomy];
-  }
-  return WORKSPACE_HANDOFF_TAXONOMY[taxonomy];
-}
 
 function readText(file) {
   return fs.readFileSync(file, "utf8");
@@ -193,10 +163,13 @@ function routeCaseContractText(skillName, routes) {
     file: "route-cases/skills.json",
     relative: "route-cases/skills.json",
     text: JSON.stringify({
+      authorityBoundary: "Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.",
       skillOperations: routes.skillOperations?.find((entry) => entry.id === skillName) ?? null,
       workspaceContextPolicies: (routes.workspaceContextPolicies ?? []).filter((policy) => policy.id === skillName),
       workspaceExecutionContextFixtures: routes.workspaceExecutionContextFixtures ?? null,
-      workspaceHandoffCases: routes.workspaceHandoffCases?.[skillName] ?? null,
+      workspaceHandoffCases: Array.isArray(routes.workspaceHandoffCases)
+        ? routes.workspaceHandoffCases.filter((entry) => entry.id === skillName)
+        : null,
       routes: routes.skills?.[skillName] ?? null,
     }, null, 2),
   };
@@ -249,21 +222,38 @@ function authorityLineIsAllowed(line) {
     /^never derive authority from the shell cwd, a repository root, or a nearby \.roll directory$/u,
     /^do not rediscover from cwd or \.roll, activate a workspace, or (?:create one inside this skill|apply creation from the clarification answer)$/u,
     /^never derive authority from a repository-local \.roll directory$/u,
+    /^do not rediscover authority from cwd or \.roll\b/u,
     /^under roll-loop, the builder must not edit shared \.roll completion status$/u,
     new RegExp(`^(?:do not|never) derive authority from ${singleTarget.source}$`, "u"),
   ].some((pattern) => pattern.test(normalized));
 }
 
-function staleAuthorityViolations(skillName, contractTexts) {
+function staleAuthorityViolations(skillName, contractTexts, { legacyBoundary = false, policies = [] } = {}) {
   const violations = [];
+  const canMutateRepository = policies.some((policy) => policy.effectTarget === "repository" && policy.access === "mutation");
   for (const { relative, text } of contractTexts) {
+    const carrierAuthorityPlaceholder = /Every relative `?\.roll`? path in this carrier resolves from `context\.authorities` and is never joined to cwd\./iu.test(text);
+    const carrierMachineRuntimeBoundary = /Every `~\/\.shared\/roll\/loop\/` path in this carrier is machine-only telemetry and never Workspace authority\./iu.test(text);
+    const carrierDiagnosticInitBoundary = /Every `roll init` mention in this carrier is diagnostic example text and never executable Workspace authority\./iu.test(text);
     for (const [offset, line] of text.split(/\r?\n/u).entries()) {
       const location = `${relative}:${offset + 1}`;
+      const relativeRollCommand = line.match(/\b(?:git\s+(?:add|-C)|mkdir|find|test\s+-[A-Za-z]+)\b[^\n]*?(?<![\/~])\.roll(?:\/|\b)/iu);
+      if (relativeRollCommand !== null && !explicitlyRejects(line, relativeRollCommand.index ?? 0)) {
+        violations.push(`relative-roll-command:${location}`);
+      }
+      const ambientProjectRoot = line.match(/\b(?:works on any|scan the|confirm the current directory is an|reads the local codebase directly)[^\n]*\b(?:project|codebase) root\b/iu);
+      if (ambientProjectRoot !== null) violations.push(`ambient-project-root-authority:${location}`);
+      const projectRollPlaceholder = line.match(/<project>\/\.roll\//u);
+      if (projectRollPlaceholder !== null) violations.push(`project-roll-placeholder-authority:${location}`);
+      const ambientMainPush = line.match(/\bgit\s+push\s+origin\s+main\b/iu);
+      if (ambientMainPush !== null && !canMutateRepository && !explicitlyRejects(line, ambientMainPush.index ?? 0)) {
+        violations.push(`ambient-main-push:${location}`);
+      }
       for (const stalePath of line.matchAll(/(?<![A-Za-z0-9_-])\.roll(?:\/[A-Za-z0-9._/-]*)?(?![A-Za-z0-9_-])/gu)) {
         if (stalePath.index === undefined) continue;
         const pathPrefix = line.slice(0, stalePath.index).match(/[^\s"'`()]*$/u)?.[0] ?? "";
         if (pathPrefix.startsWith("/") || pathPrefix.startsWith("~/")) continue;
-        if (!authorityLineIsAllowed(line)) {
+        if (!legacyBoundary && !carrierAuthorityPlaceholder && !authorityLineIsAllowed(line)) {
           violations.push(`stale-workspace-authority:${location}`);
           break;
         }
@@ -273,7 +263,7 @@ function staleAuthorityViolations(skillName, contractTexts) {
         violations.push(`ambient-pwd-authority:${location}`);
       }
       const fixedLoopRuntime = line.match(/~\/\.shared\/roll\/loop\//u);
-      if (fixedLoopRuntime !== null && !authorityLineIsAllowed(line)) {
+      if (fixedLoopRuntime !== null && !carrierMachineRuntimeBoundary && !authorityLineIsAllowed(line)) {
         violations.push(`fixed-loop-runtime-authority:${location}`);
       }
       const localRollGit = line.match(/git\s+-C\s+`?\.roll(?:\s|`|$)/iu);
@@ -283,7 +273,7 @@ function staleAuthorityViolations(skillName, contractTexts) {
       let unsafePublicInit = false;
       for (const publicInit of line.matchAll(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/giu)) {
         if (publicInit.index === undefined) continue;
-        if (!allowedLegacyJournalReference(skillName, line, publicInit.index)) {
+        if (!legacyBoundary && !carrierDiagnosticInitBoundary && !allowedLegacyJournalReference(skillName, line, publicInit.index)) {
           unsafePublicInit = true;
           break;
         }
@@ -459,15 +449,15 @@ function parseExecutionContext(value) {
 
 function validateContextPair(input, expectedScope) {
   if (input?.promptContext == null || input?.environmentContext == null) {
-    return { decision: "missing_execution_context", proofs: [], failures: ["missing_prompt_or_environment_context"] };
+    return { decision: "missing_execution_context", proofs: ["missing_context_fail_closed"], failures: ["missing_prompt_or_environment_context"] };
   }
   const prompt = parseExecutionContext(input.promptContext);
   const environment = parseExecutionContext(input.environmentContext);
   if (!prompt.ok || !environment.ok) {
-    return { decision: "invalid_workspace_context", proofs: [], failures: ["invalid_prompt_or_environment_context"] };
+    return { decision: "invalid_workspace_context", proofs: ["context_validation_fail_closed"], failures: ["invalid_prompt_or_environment_context"] };
   }
   if (JSON.stringify(canonicalJson(prompt.value)) !== JSON.stringify(canonicalJson(environment.value))) {
-    return { decision: "workspace_context_conflict", proofs: [], failures: ["prompt_environment_context_conflict"] };
+    return { decision: "workspace_context_conflict", proofs: ["prompt_environment_conflict_fail_closed"], failures: ["prompt_environment_context_conflict"] };
   }
   if (
     ["issue_required", "repository_required"].includes(expectedScope) &&
@@ -504,10 +494,10 @@ export function evaluateWorkspaceHandoffCase(
   skillName,
   caseName,
   input,
-  { expectedScope, expectedAuthorityCategories } = {},
+  { expectedScope, expectedAuthorityCategories, expectedAccess, repositorySelectorRequired = false } = {},
 ) {
   const machineCreate = skillName === "roll-ws-create";
-  if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skillName)) {
+  if (!nonEmptyString(skillName)) {
     return { decision: "unknown_skill", proofs: [], failures: ["unknown_skill"] };
   }
 
@@ -601,8 +591,102 @@ export function evaluateWorkspaceHandoffCase(
     }
   }
 
+  if (expectedScope === "machine_only") {
+    if (input?.workspaceAuthorityUsed === true) {
+      return { decision: "workspace_authority_forbidden", proofs: ["machine_only_scope"], failures: ["workspace_authority_forbidden"] };
+    }
+    if (input?.repositoryAccessAttempted === true) {
+      return { decision: "repository_access_forbidden", proofs: ["machine_only_scope"], failures: ["repository_authority_forbidden"] };
+    }
+    if (caseName === "requirement_mismatch") {
+      if (!WORKSPACE_REQUIREMENT_FAILURE_CODES.has(input?.resolutionCode)) {
+        return { decision: "invalid_requirement_failure", proofs: ["machine_only_scope"], failures: ["unknown_requirement_failure"] };
+      }
+      return { decision: "stop_and_route_workspace_target", proofs: ["machine_only_scope", "requirement_failure_route"], failures: [] };
+    }
+    if (caseName === "multi_repo") {
+      return { decision: "repository_access_forbidden", proofs: ["machine_only_scope", "repository_authority_absent"], failures: [] };
+    }
+    if (caseName === "legacy_boundary") {
+      return { decision: "legacy_execution_forbidden", proofs: ["machine_only_scope", "legacy_authority_absent"], failures: [] };
+    }
+    return { decision: "use_machine_scope", proofs: ["machine_only_scope", "workspace_authority_absent"], failures: [] };
+  }
+
+  if (expectedScope === "legacy_migration_only") {
+    if (caseName === "requirement_mismatch") {
+      if (!WORKSPACE_REQUIREMENT_FAILURE_CODES.has(input?.resolutionCode)) {
+        return { decision: "invalid_requirement_failure", proofs: ["legacy_migration_boundary"], failures: ["unknown_requirement_failure"] };
+      }
+      return { decision: "stop_and_route_workspace_target", proofs: ["legacy_migration_boundary", "requirement_failure_route"], failures: [] };
+    }
+    if (caseName === "legacy_boundary") {
+      if (input?.legacyProjectSelector == null || input?.canonicalNextAction == null || input?.dualWriteAttempted === true) {
+        return { decision: "legacy_execution_forbidden", proofs: ["legacy_migration_boundary"], failures: ["legacy_boundary_breached"] };
+      }
+      return { decision: "legacy_migration_only", proofs: ["legacy_migration_boundary", "canonical_next_action", "no_dual_write"], failures: [] };
+    }
+    if (input?.legacyProjectSelector == null || input?.legacyProjectSelector === "") {
+      return { decision: "stop_without_legacy_project_selector", proofs: ["legacy_migration_boundary"], failures: [] };
+    }
+    if (caseName === "explicit_selector") {
+      return { decision: "use_selected_legacy_project", proofs: ["legacy_migration_boundary", "explicit_legacy_project_selector"], failures: [] };
+    }
+    return { decision: "stop_without_legacy_project_selector", proofs: ["legacy_migration_boundary", "ambient_cwd_ignored"], failures: [] };
+  }
+
+  if (expectedScope === "workspace_optional_read" && input?.promptContext == null && input?.environmentContext == null) {
+    if (input?.mutationAttempted === true) {
+      return { decision: "workspace_context_scope_mismatch", proofs: ["optional_workspace_context"], failures: ["optional_read_boundary_breached"] };
+    }
+    if (input?.repositoryAccessAttempted === true) {
+      return { decision: "repository_access_forbidden", proofs: ["optional_workspace_context"], failures: ["repository_authority_absent"] };
+    }
+    if (caseName === "arbitrary_cwd") {
+      return { decision: "optional_workspace_context", proofs: ["optional_workspace_context", "ambient_cwd_not_authoritative"], failures: [] };
+    }
+    if (caseName === "requirement_mismatch") {
+      if (!WORKSPACE_REQUIREMENT_FAILURE_CODES.has(input?.resolutionCode)) {
+        return { decision: "invalid_requirement_failure", proofs: ["optional_workspace_context"], failures: ["unknown_requirement_failure"] };
+      }
+      return { decision: "stop_and_route_workspace_target", proofs: ["optional_workspace_context", "requirement_failure_route"], failures: [] };
+    }
+    if (caseName === "multi_repo") {
+      return { decision: "repository_access_forbidden", proofs: ["optional_workspace_context", "repository_authority_absent"], failures: [] };
+    }
+    if (caseName === "legacy_boundary") {
+      return { decision: "legacy_execution_forbidden", proofs: ["optional_workspace_context", "legacy_authority_absent"], failures: [] };
+    }
+  }
+
   const context = validateContextPair(input, expectedScope);
   if (context.decision !== undefined) return context;
+
+  if (expectedAccess === "read" && input?.mutationAttempted === true) {
+    return { decision: "read_only_operation", proofs: [...context.proofs, "read_only_policy"], failures: ["mutation_forbidden"] };
+  }
+
+  if (repositorySelectorRequired && !["multi_repo", "legacy_boundary", "requirement_mismatch"].includes(caseName)) {
+    const repositories = context.contextValue.issue?.execution?.repositories;
+    if (repositories === undefined) {
+      return { decision: "missing_execution_context", proofs: context.proofs, failures: ["repository_execution_map_missing"] };
+    }
+    if (input?.repositorySelector == null || input.repositorySelector === "") {
+      return { decision: "stop_without_repository_selector", proofs: [...context.proofs, "repository_selector_required"], failures: [] };
+    }
+    const selectedRepositories = Object.values(repositories).filter((repository) =>
+      repository.repoId === input.repositorySelector || repository.alias === input.repositorySelector);
+    if (selectedRepositories.length === 0) {
+      return { decision: "invalid_repository_selector", proofs: context.proofs, failures: ["repository_selector_not_in_context"] };
+    }
+    if (selectedRepositories.length > 1) {
+      return { decision: "ambiguous_repository_selector", proofs: context.proofs, failures: ["repository_selector_ambiguous"] };
+    }
+    if (expectedAccess === "mutation" && selectedRepositories[0].access !== "write") {
+      return { decision: "repository_write_access_required", proofs: context.proofs, failures: ["selected_repository_is_read_only"] };
+    }
+    context.proofs.push("explicit_repository_selector");
+  }
 
   if (caseName === "arbitrary_cwd") {
     if (input.authoritySource !== "handoff") {
@@ -665,19 +749,25 @@ export function evaluateWorkspaceHandoffCase(
     if (repositoryCount < 1) {
       return { decision: "missing_execution_context", proofs: context.proofs, failures: ["repository_execution_map_missing"] };
     }
-    if (repositoryCount > 1 && (input.repositorySelector == null || input.repositorySelector === "")) {
+    if ((repositorySelectorRequired || repositoryCount > 1) && (input.repositorySelector == null || input.repositorySelector === "")) {
       return {
         decision: "stop_without_repository_selector",
         proofs: [...context.proofs, "multi_repo_fail_closed"],
         failures: [],
       };
     }
-    if (
-      input.repositorySelector != null &&
-      !Object.values(repositories).some((repository) =>
-        repository.repoId === input.repositorySelector || repository.alias === input.repositorySelector)
-    ) {
+    const selectedRepositories = input.repositorySelector == null
+      ? []
+      : Object.values(repositories).filter((repository) =>
+        repository.repoId === input.repositorySelector || repository.alias === input.repositorySelector);
+    if (input.repositorySelector != null && selectedRepositories.length === 0) {
       return { decision: "invalid_repository_selector", proofs: context.proofs, failures: ["repository_selector_not_in_context"] };
+    }
+    if (selectedRepositories.length > 1) {
+      return { decision: "ambiguous_repository_selector", proofs: context.proofs, failures: ["repository_selector_ambiguous"] };
+    }
+    if (expectedAccess === "mutation" && selectedRepositories[0]?.access !== "write") {
+      return { decision: "repository_write_access_required", proofs: context.proofs, failures: ["selected_repository_is_read_only"] };
     }
     return {
       decision: "use_selected_repository",
@@ -687,12 +777,9 @@ export function evaluateWorkspaceHandoffCase(
   }
 
   if (caseName === "legacy_boundary") {
-    if (input.scope !== "legacy_migration_only" || input.legacyReadOnly !== true || input.legacyCommandExecuted === true) {
-      return { decision: "legacy_execution_forbidden", proofs: context.proofs, failures: ["legacy_boundary_breached"] };
-    }
     return {
-      decision: "legacy_migration_only",
-      proofs: [...context.proofs, "legacy_read_only", "legacy_command_not_executed"],
+      decision: "legacy_execution_forbidden",
+      proofs: [...context.proofs, "legacy_authority_absent"],
       failures: [],
     };
   }
@@ -700,42 +787,117 @@ export function evaluateWorkspaceHandoffCase(
   return { decision: "unknown_case", proofs: context.proofs, failures: ["unknown_case"] };
 }
 
-function workspaceHandoffCaseResultsFor(skill, routes) {
-  if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skill.name)) return [];
-  const cases = Array.isArray(routes.workspaceHandoffCases?.[skill.name])
-    ? routes.workspaceHandoffCases[skill.name]
-    : [];
-  const policyScopes = [...new Set((routes.workspaceContextPolicies ?? [])
-    .filter((policy) => policy.id === skill.name)
-    .map((policy) => policy.scope))];
-  const expectedScope = policyScopes.length === 1 ? policyScopes[0] : undefined;
+function pairedContext(routes, fixtureName) {
+  const fixture = structuredClone(routes.workspaceExecutionContextFixtures?.[fixtureName]);
+  return { promptContext: fixture, environmentContext: structuredClone(fixture) };
+}
 
-  return cases.map((item) => {
-    const input = structuredClone(item.input ?? null);
-    if (input !== null && typeof input === "object") {
-      for (const target of ["promptContext", "environmentContext"]) {
-        const fixtureKey = `${target}Fixture`;
-        if (input[target] === undefined && typeof input[fixtureKey] === "string") {
-          input[target] = structuredClone(routes.workspaceExecutionContextFixtures?.[input[fixtureKey]]);
-        }
-        delete input[fixtureKey];
-      }
+function policyProofCases(policy, routes) {
+  if (policy.id === "roll-ws-create") {
+    return [
+      { case: "arbitrary_cwd", evaluatorCase: "arbitrary_cwd", input: { cwd: "/tmp/us-ws-038", createConfig: "/tmp/workspace-create.yaml", previewRequested: true, rediscoveryAttempted: false }, expected: "use_explicit_create_preview" },
+      { case: "authorized_apply", evaluatorCase: "explicit_selector", input: { preview: { workspaceId: "roll", configSha256: "a".repeat(64), planSha256: "b".repeat(64) }, authorization: { schema: "roll.workspace-create-apply-authorization/v1", source: "owner_after_preview", workspaceId: "roll", configSha256: "a".repeat(64), planSha256: "b".repeat(64) }, naturalLanguageIntentOnly: false, retryPreview: { workspaceId: "roll", configSha256: "a".repeat(64), planSha256: "b".repeat(64) } }, expected: "use_explicit_create_identity" },
+      { case: "ambiguous_requirement", evaluatorCase: "requirement_mismatch", input: { resolutionCode: "ambiguous_requirement_match", rediscoveryAttempted: false, applyAttempted: false }, expected: "stop_and_route_workspace_target" },
+      { case: "all_create_bindings", evaluatorCase: "multi_repo", input: { repositoryBindings: ["product", "skills"], validatedBindings: ["skills", "product"] }, expected: "validate_all_create_config_bindings" },
+      { case: "legacy_journal_boundary", evaluatorCase: "legacy_boundary", input: { legacyJournal: "legacy_create_journal", reconcileOnly: true, legacyCommandExecuted: false }, expected: "reconcile_named_legacy_journals_only" },
+    ];
+  }
+
+  if (policy.scope === "machine_only") {
+    return [
+      { case: "arbitrary_cwd", evaluatorCase: "arbitrary_cwd", input: { cwd: "/tmp/us-ws-038" }, expected: "use_machine_scope" },
+      { case: "workspace_authority_attempt", evaluatorCase: "arbitrary_cwd", input: { workspaceAuthorityUsed: true }, expected: "workspace_authority_forbidden" },
+      { case: "repository_authority_attempt", evaluatorCase: "multi_repo", input: { repositoryAccessAttempted: true }, expected: "repository_access_forbidden" },
+      { case: "ambiguous_requirement", evaluatorCase: "requirement_mismatch", input: { resolutionCode: "ambiguous_requirement_match" }, expected: "stop_and_route_workspace_target" },
+      { case: "legacy_boundary", evaluatorCase: "legacy_boundary", input: {}, expected: "legacy_execution_forbidden" },
+    ];
+  }
+
+  if (policy.scope === "legacy_migration_only") {
+    return [
+      { case: "arbitrary_cwd", evaluatorCase: "arbitrary_cwd", input: { cwd: "/tmp/us-ws-038" }, expected: "stop_without_legacy_project_selector" },
+      { case: "selected_legacy_project", evaluatorCase: "explicit_selector", input: { legacyProjectSelector: "/tmp/legacy-project" }, expected: "use_selected_legacy_project" },
+      { case: "missing_legacy_selector", evaluatorCase: "multi_repo", input: {}, expected: "stop_without_legacy_project_selector" },
+      { case: "dual_write_forbidden", evaluatorCase: "legacy_boundary", input: { legacyProjectSelector: "/tmp/legacy-project", canonicalNextAction: "roll workspace create --config plan.yaml --check", dualWriteAttempted: true }, expected: "legacy_execution_forbidden" },
+      { case: "canonical_next_action", evaluatorCase: "legacy_boundary", input: { legacyProjectSelector: "/tmp/legacy-project", canonicalNextAction: "roll workspace create --config plan.yaml --check", dualWriteAttempted: false }, expected: "legacy_migration_only" },
+    ];
+  }
+
+  if (policy.scope === "workspace_optional_read") {
+    const context = pairedContext(routes, "workspace");
+    return [
+      { case: "arbitrary_cwd", evaluatorCase: "arbitrary_cwd", input: { cwd: "/tmp/us-ws-038" }, expected: "optional_workspace_context" },
+      { case: "verified_optional_context", evaluatorCase: "explicit_selector", input: { ...context, explicitWorkspaceId: "roll", retryWorkspaceId: "roll", retryStoryId: null }, expected: "use_verified_explicit_identity" },
+      { case: "ambiguous_requirement", evaluatorCase: "requirement_mismatch", input: { resolutionCode: "ambiguous_requirement_match" }, expected: "stop_and_route_workspace_target" },
+      { case: "mutation_forbidden", evaluatorCase: "arbitrary_cwd", input: { mutationAttempted: true }, expected: "workspace_context_scope_mismatch" },
+      { case: "repository_forbidden", evaluatorCase: "multi_repo", input: { repositoryAccessAttempted: true }, expected: "repository_access_forbidden" },
+    ];
+  }
+
+  const fixtureName = ["issue_required", "repository_required"].includes(policy.scope) ? "issue" : "workspace";
+  const base = pairedContext(routes, fixtureName);
+  const selected = policy.repositorySelector === "required" ? { repositorySelector: "product" } : {};
+  const conflict = pairedContext(routes, fixtureName);
+  conflict.environmentContext.workspace.workspaceId = "other";
+  if (conflict.environmentContext.issue !== undefined) {
+    conflict.environmentContext.issue.execution.workspaceId = "other";
+  }
+  const cases = [
+    { case: "arbitrary_cwd", evaluatorCase: "arbitrary_cwd", input: { ...base, ...selected, cwd: "/tmp/us-ws-038", authoritySource: "handoff", rediscoveryAttempted: false }, expected: "use_handoff_authorities" },
+    { case: "missing_context", evaluatorCase: "arbitrary_cwd", input: { promptContext: null, environmentContext: null, ...selected, authoritySource: "handoff" }, expected: "missing_execution_context" },
+    { case: "same_story_different_workspace", evaluatorCase: "arbitrary_cwd", input: { ...conflict, ...selected, authoritySource: "handoff" }, expected: "workspace_context_conflict" },
+    { case: "ambiguous_requirement", evaluatorCase: "requirement_mismatch", input: { ...base, resolutionCode: "ambiguous_requirement_match", rediscoveryAttempted: false }, expected: "stop_and_route_workspace_target" },
+    { case: "legacy_boundary", evaluatorCase: "legacy_boundary", input: base, expected: "legacy_execution_forbidden" },
+  ];
+
+  if (policy.repositorySelector === "required") {
+    const ambiguous = pairedContext(routes, "issue");
+    ambiguous.promptContext.issue.execution.repositories["repo-product-shadow"] = {
+      ...structuredClone(ambiguous.promptContext.issue.execution.repositories["repo-product"]),
+      repoId: "repo-product-shadow",
+    };
+    ambiguous.environmentContext = structuredClone(ambiguous.promptContext);
+    cases.push(
+      { case: "selected_repository", evaluatorCase: "multi_repo", input: { ...base, repositorySelector: "product" }, expected: "use_selected_repository" },
+      { case: "missing_repository_selector", evaluatorCase: "multi_repo", input: base, expected: "stop_without_repository_selector" },
+      { case: "unknown_repository_selector", evaluatorCase: "multi_repo", input: { ...base, repositorySelector: "unknown" }, expected: "invalid_repository_selector" },
+      { case: "ambiguous_repository_selector", evaluatorCase: "multi_repo", input: { ...ambiguous, repositorySelector: "product" }, expected: "ambiguous_repository_selector" },
+    );
+    if (policy.access === "mutation") {
+      cases.push({ case: "read_only_repository", evaluatorCase: "multi_repo", input: { ...base, repositorySelector: "skills" }, expected: "repository_write_access_required" });
     }
-    const expected = expectedHandoffOutcome(skill.name, item.case);
-    const evaluation = evaluateWorkspaceHandoffCase(skill.name, item.case, input, {
-      expectedScope,
+  }
+  if (policy.access === "read") {
+    cases.push({ case: "mutation_forbidden", evaluatorCase: "arbitrary_cwd", input: { ...base, ...selected, authoritySource: "handoff", mutationAttempted: true }, expected: "read_only_operation" });
+  }
+  return cases;
+}
+
+function workspaceHandoffCaseResultsFor(skill, routes) {
+  const policies = (routes.workspaceContextPolicies ?? []).filter((policy) => policy.id === skill.name);
+  return policies.flatMap((policy) => policyProofCases(policy, routes).map((item) => {
+    const evaluation = evaluateWorkspaceHandoffCase(skill.name, item.evaluatorCase, item.input, {
+      expectedScope: policy.scope,
       expectedAuthorityCategories: REQUIRED_AUTHORITY_CATEGORIES[skill.name],
+      expectedAccess: policy.access,
+      repositorySelectorRequired: policy.repositorySelector === "required",
     });
     return {
+      operation: policy.operation,
+      scope: policy.scope,
+      consumer: policy.contextConsumer ?? null,
+      effectTarget: policy.effectTarget,
+      access: policy.access,
+      repositorySelector: policy.repositorySelector,
       case: item.case,
-      input,
-      expected,
+      input: item.input,
+      expected: item.expected,
       actual: evaluation.decision,
       proofs: evaluation.proofs,
       failures: evaluation.failures,
-      passed: item.expected === expected && evaluation.decision === expected && evaluation.failures.length === 0,
+      passed: evaluation.decision === item.expected,
     };
-  });
+  }));
 }
 
 export function parseSkillFile(file, contractTexts = collectContractText(path.dirname(file))) {
@@ -770,6 +932,7 @@ export function parseSkillFile(file, contractTexts = collectContractText(path.di
     workspaceContextOperations: csv(fields["workspace-context-operations"]),
     workspaceAllowsAmbientCwd: frontmatterBoolean(fields["workspace-allows-ambient-cwd"]),
     workspaceAllowsLegacyRollPath: frontmatterBoolean(fields["workspace-allows-legacy-roll-path"]),
+    workspaceHandoffRationale: fields["workspace-handoff-rationale"] ?? "",
     workspaceHandoffSection: extractHandoffSection(body),
     scannedFiles: contractTexts.map(({ relative }) => relative).sort(),
   };
@@ -803,23 +966,34 @@ function routeCoverageFor(skillName, routes) {
 }
 
 function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults, authorityCategoryList, createChecks) {
-  if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skill.name)) return [];
-
   const violations = [];
   const policies = (routes.workspaceContextPolicies ?? []).filter((policy) => policy.id === skill.name);
+  if (policies.length === 0) return violations;
   const policyOperations = policies.map((policy) => policy.operation).sort();
   const policyScopes = [...new Set(policies.map((policy) => policy.scope))];
   const policyConsumers = [...new Set(policies.map((policy) => policy.contextConsumer ?? ""))];
   const ambientPolicies = [...new Set(policies.map((policy) => policy.allowsAmbientCwd))];
   const legacyPolicies = [...new Set(policies.map((policy) => policy.allowsLegacyRollPath))];
+  const scopesWithRationale = policies.filter((policy) =>
+    policy.scope === "machine_only" || policy.scope === "legacy_migration_only");
 
   const machineCreate = skill.name === "roll-ws-create";
-  const expectedDeclaration = machineCreate ? "machine_create_required" : "required";
+  const onlyMachine = policyScopes.length === 1 && policyScopes[0] === "machine_only";
+  const onlyLegacy = policyScopes.length === 1 && policyScopes[0] === "legacy_migration_only";
+  const expectedDeclaration = machineCreate
+    ? "machine_create_required"
+    : onlyMachine
+      ? "machine_only"
+      : onlyLegacy
+        ? "legacy_migration_only"
+        : "required";
   if (skill.workspaceExecutionHandoff !== expectedDeclaration) violations.push("workspace-handoff-declaration-missing");
-  if (policyScopes.length !== 1 || skill.workspaceContextScope !== policyScopes[0]) {
+  const expectedScopeDeclaration = policyScopes.length === 1 ? policyScopes[0] : "policy_driven";
+  if (skill.workspaceContextScope !== expectedScopeDeclaration) {
     violations.push("workspace-handoff-policy-mismatch:scope");
   }
-  if (policyConsumers.length !== 1 || skill.workspaceContextConsumer !== policyConsumers[0]) {
+  const expectedConsumerDeclaration = policyConsumers.length === 1 ? policyConsumers[0] : "policy_driven";
+  if (skill.workspaceContextConsumer !== expectedConsumerDeclaration) {
     violations.push("workspace-handoff-policy-mismatch:consumer");
   }
   if (JSON.stringify(skill.workspaceContextOperations) !== JSON.stringify(policyOperations)) {
@@ -830,6 +1004,33 @@ function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults
   }
   if (legacyPolicies.length !== 1 || skill.workspaceAllowsLegacyRollPath !== legacyPolicies[0]) {
     violations.push("workspace-handoff-policy-mismatch:allowsLegacyRollPath");
+  }
+  if (scopesWithRationale.some((policy) => typeof policy.rationale !== "string" || policy.rationale.length === 0)) {
+    violations.push("workspace-handoff-policy-rationale-missing");
+  }
+  if (!machineCreate && scopesWithRationale.length > 0 && skill.workspaceHandoffRationale === "") {
+    violations.push("workspace-handoff-rationale-missing");
+  }
+
+  for (const policy of policies) {
+    if (!["none", "workspace", "issue", "repository", "machine", "legacy_project"].includes(policy.effectTarget)) {
+      violations.push(`workspace-handoff-policy-effect-target-invalid:${policy.operation}`);
+    }
+    if (!["none", "read", "mutation"].includes(policy.access)) {
+      violations.push(`workspace-handoff-policy-access-invalid:${policy.operation}`);
+    }
+    if (!["not_applicable", "required", "forbidden"].includes(policy.repositorySelector)) {
+      violations.push(`workspace-handoff-policy-selector-invalid:${policy.operation}`);
+    }
+    if (policy.contextConsumer === "repository" && policy.repositorySelector !== "required") {
+      violations.push(`workspace-handoff-policy-selector-required:${policy.operation}`);
+    }
+    if (policy.scope === "machine_only" && policy.repositorySelector !== "forbidden") {
+      violations.push(`workspace-handoff-policy-selector-forbidden:${policy.operation}`);
+    }
+    if (!machineCreate && typeof policy.rationale === "string" && policy.rationale.length > 0 && !skill.workspaceHandoffSection.includes(policy.rationale)) {
+      violations.push(`workspace-handoff-operation-rationale-missing:${policy.operation}`);
+    }
   }
 
   for (const category of REQUIRED_AUTHORITY_CATEGORIES[skill.name] ?? []) {
@@ -842,7 +1043,7 @@ function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults
   if (section === "") {
     violations.push("workspace-handoff-section-missing");
   } else {
-    const requiredMarkers = machineCreate
+    let requiredMarkers = machineCreate
       ? [
           ["machine-create", /machine_only[\s\S]*(?:normal creation|normally absent)[^\n]*(?:no|without)[^\n]*Workspace execution context/iu],
           ["optional-context-pair", /prompt block[\s\S]*ROLL_WORKSPACE_EXECUTION_CONTEXT[\s\S]*(?:both|pair)[\s\S]*semantically identical/iu],
@@ -853,7 +1054,21 @@ function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults
           ["clarify-route", /roll-\.clarify workspace_target/u],
           ["legacy-journal", /(?:read|reconcile)[^.\n]*(?:named|old|historical|legacy)[^.\n]*workspace-init[^.\n]*journal/iu],
         ]
-      : [
+      : onlyMachine
+        ? [
+          ["machine-only", /machine[_ -]only/iu],
+          ["machine-rationale", /rationale/iu],
+          ["no-workspace-authority", /no Workspace authority/iu],
+          ["repository-forbidden", /repository access is forbidden/iu],
+        ]
+        : onlyLegacy
+          ? [
+            ["legacy-selector", /explicitly selected legacy project/iu],
+            ["legacy-rationale", /rationale/iu],
+            ["canonical-next-action", /canonical next action/iu],
+            ["no-dual-write", /no dual-write/iu],
+          ]
+          : [
           ["prompt-block", /prompt block/iu],
           ["environment", /ROLL_WORKSPACE_EXECUTION_CONTEXT/u],
           ["semantic-equality", /semantically identical/iu],
@@ -866,6 +1081,12 @@ function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults
           ["identity-continuity", /retry[^.\n]*continuation[^.\n]*same[^.\n]*(?:Workspace|workspace)[^.\n]*(?:Issue|Story|story)/iu],
           ["legacy-boundary", /legacy[^.\n]*(?:migration|journal|recovery)/iu],
         ];
+    if (!policyConsumers.some((consumer) => ["workspace", "issue"].includes(consumer))) {
+      requiredMarkers = requiredMarkers.filter(([name]) => name !== "authorities");
+    }
+    if (!policies.some((policy) => policy.repositorySelector === "required")) {
+      requiredMarkers = requiredMarkers.filter(([name]) => !["repositories", "multi-repo-selector"].includes(name));
+    }
     for (const [name, pattern] of requiredMarkers) {
       if (!pattern.test(section)) violations.push(`workspace-handoff-marker-missing:${name}`);
     }
@@ -880,38 +1101,34 @@ function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults
     }
   }
 
-  const cases = routes.workspaceHandoffCases?.[skill.name];
-  if (!Array.isArray(cases)) {
-    violations.push("workspace-handoff-cases-missing");
-  } else {
-    const seen = new Set();
-    for (const item of cases) {
-      const taxonomy = item?.case;
-      if (!Object.hasOwn(WORKSPACE_HANDOFF_TAXONOMY, taxonomy)) {
-        violations.push(`workspace-handoff-case-unknown:${String(taxonomy)}`);
-        continue;
-      }
-      if (seen.has(taxonomy)) violations.push(`workspace-handoff-case-duplicate:${taxonomy}`);
-      seen.add(taxonomy);
-      if (item?.expected !== expectedHandoffOutcome(skill.name, taxonomy)) {
-        violations.push(`workspace-handoff-case-outcome-invalid:${taxonomy}`);
-      }
+  const bundles = Array.isArray(routes.workspaceHandoffCases)
+    ? routes.workspaceHandoffCases.filter((bundle) => bundle.id === skill.name)
+    : [];
+  const policyKeys = policies.map((policy) => policy.operation);
+  const bundleKeys = bundles.map((bundle) => bundle.operation);
+  for (const operation of policyKeys) {
+    const matching = bundles.filter((bundle) => bundle.operation === operation);
+    if (matching.length === 0) violations.push(`workspace-handoff-cases-missing:${operation}`);
+    if (matching.length > 1) violations.push(`workspace-handoff-cases-duplicate:${operation}`);
+    const policy = policies.find((candidate) => candidate.operation === operation);
+    const expectedProfile = skill.name === "roll-ws-create"
+      ? `machine_create:${policy.access}`
+      : `${policy.scope}:${policy.access}`;
+    if (matching[0]?.proofProfile !== expectedProfile) {
+      violations.push(`workspace-handoff-proof-profile-mismatch:${operation}`);
     }
-    for (const taxonomy of Object.keys(WORKSPACE_HANDOFF_TAXONOMY)) {
-      if (!seen.has(taxonomy)) violations.push(`workspace-handoff-case-missing:${taxonomy}`);
-    }
+  }
+  for (const operation of bundleKeys) {
+    if (!policyKeys.includes(operation)) violations.push(`workspace-handoff-cases-orphan:${operation}`);
   }
 
   for (const result of caseResults) {
-    for (const failure of result.failures) {
-      violations.push(`workspace-handoff-case-execution-failed:${result.case}:${failure}`);
-    }
     if (result.actual !== result.expected) {
-      violations.push(`workspace-handoff-case-decision-invalid:${result.case}:${result.actual}`);
+      violations.push(`workspace-handoff-case-decision-invalid:${result.operation}:${result.case}:${result.actual}`);
     }
   }
 
-  violations.push(...staleAuthorityViolations(skill.name, contractTexts));
+  violations.push(...staleAuthorityViolations(skill.name, contractTexts, { legacyBoundary: onlyLegacy, policies }));
   return violations;
 }
 
@@ -971,10 +1188,41 @@ export function auditSkills({ skillsDir, routeFile }) {
     skill.scannedFiles.map((file) => file === "route-cases/skills.json" ? file : `${skill.name}/${file}`),
   ))].sort();
   const handoffCaseResults = skills.flatMap((skill) => skill.workspaceHandoffCaseResults);
+  const registryViolations = [];
+  const shippedFamilies = skills.map((skill) => skill.name).sort();
+  const policyRows = (routes.workspaceContextPolicies ?? []).filter((policy) => policy.surface === "skill");
+  const policyFamilies = [...new Set(policyRows.map((policy) => policy.id))].sort();
+  const operationEntries = Array.isArray(routes.skillOperations) ? routes.skillOperations : [];
+  const operationFamilies = operationEntries.map((entry) => entry.id).sort();
+  const policyKeys = policyRows.map((policy) => `${policy.id}:${policy.operation}`);
+  const bundleRows = Array.isArray(routes.workspaceHandoffCases) ? routes.workspaceHandoffCases : [];
+  const bundleKeys = bundleRows.map((bundle) => `${bundle.id}:${bundle.operation}`);
+  if (JSON.stringify(policyFamilies) !== JSON.stringify(shippedFamilies)) {
+    registryViolations.push("workspace-policy-family-inventory-mismatch");
+  }
+  if (JSON.stringify(operationFamilies) !== JSON.stringify(shippedFamilies)) {
+    registryViolations.push("workspace-operation-family-inventory-mismatch");
+  }
+  if (new Set(policyKeys).size !== policyKeys.length) {
+    registryViolations.push("workspace-policy-operation-duplicate");
+  }
+  if (new Set(bundleKeys).size !== bundleKeys.length) {
+    registryViolations.push("workspace-handoff-bundle-duplicate");
+  }
+  if (JSON.stringify([...policyKeys].sort()) !== JSON.stringify([...bundleKeys].sort())) {
+    registryViolations.push("workspace-policy-handoff-bundle-mismatch");
+  }
+  for (const entry of operationEntries) {
+    const operations = [...entry.operations].sort();
+    const policyOperations = policyRows.filter((policy) => policy.id === entry.id).map((policy) => policy.operation).sort();
+    if (JSON.stringify(operations) !== JSON.stringify(policyOperations)) {
+      registryViolations.push(`workspace-operation-policy-mismatch:${entry.id}`);
+    }
+  }
 
   const summary = {
     skills: skills.length,
-    violations: skills.reduce((count, skill) => count + skill.violations.length, 0),
+    violations: skills.reduce((count, skill) => count + skill.violations.length, 0) + registryViolations.length,
     over250: skills.filter((skill) => skill.lines > 250).length,
     withGotchas: skills.filter((skill) => skill.hasGotchas).length,
     loadTriggerDescriptions: skills.filter((skill) => skill.descriptionLoadTrigger).length,
@@ -985,10 +1233,11 @@ export function auditSkills({ skillsDir, routeFile }) {
     ),
     workspaceHandoffCases: handoffCaseResults.length,
     workspaceHandoffCaseFailures: handoffCaseResults.filter((result) => !result.passed).length,
+    workspaceHandoffRegistryViolations: registryViolations.length,
     scannedFiles: scannedFiles.length,
   };
 
-  return { summary, scannedFiles, skills };
+  return { summary, scannedFiles, skills, workspaceHandoffRegistryViolations: registryViolations };
 }
 
 function printHuman(report) {
@@ -999,9 +1248,11 @@ function printHuman(report) {
   console.log(`Skills with auxiliary files: ${report.summary.withAuxiliaryFiles}`);
   console.log(`Workspace handoff violations: ${report.summary.workspaceHandoffViolations}`);
   console.log(`Workspace handoff cases: ${report.summary.workspaceHandoffCases - report.summary.workspaceHandoffCaseFailures}/${report.summary.workspaceHandoffCases}`);
+  console.log(`Workspace handoff registry violations: ${report.summary.workspaceHandoffRegistryViolations}`);
   console.log(`Scanned files: ${report.summary.scannedFiles}`);
   for (const file of report.scannedFiles) console.log(`  scanned: ${file}`);
   console.log(`Violations: ${report.summary.violations}`);
+  for (const violation of report.workspaceHandoffRegistryViolations) console.log(`- registry: ${violation}`);
 
   for (const skill of report.skills) {
     const markers = [];

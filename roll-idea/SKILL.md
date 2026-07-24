@@ -3,8 +3,16 @@ name: roll-idea
 license: MIT
 allowed-tools: "Read, Edit"
 description: "Load when the user gives a short idea or bug note that should be quickly classified, assigned an ID, and appended to backlog."
+workspace-execution-handoff: required
+workspace-context-scope: workspace_required_mutation
+workspace-context-consumer: workspace
+workspace-context-operations: capture
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # roll-idea
+
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
 
 ## Gotchas
 
@@ -60,3 +68,11 @@ Text:   {description}
 - If the description is vague, record it verbatim and append `(细节待确认)`.
 - Never modify existing entries — only append new rows.
 - If `.roll/backlog.md` does not exist, report an error and stop.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- Resolve the backlog only through `context.authorities`; `context.issue.execution.repositories` and any repository ID or alias are not authority for capture.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

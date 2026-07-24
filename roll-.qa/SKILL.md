@@ -4,6 +4,12 @@ name: roll-.qa
 license: MIT
 allowed-tools: "Read"
 description: "Load when a build, fix, review, or story needs Roll QA coverage standards: test pyramid, evidence expectations, visual/E2E boundaries, or CI gates."
+workspace-execution-handoff: required
+workspace-context-scope: issue_required
+workspace-context-consumer: issue
+workspace-context-operations: evaluate
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll QA
 
@@ -58,3 +64,11 @@ Load when a build, fix, review, or story needs Roll QA coverage standards: test 
 ## Role in v4 execution profiles
 
 These QA standards are an **Evaluator capability** in the `verified`/`designed` execution profiles: the independent Evaluator applies them to judge story satisfaction and produces an `eval-report.md` (blocking findings, advisory findings, score, attest/evidence status, recommendation) — distinct from CI feedback and from the Builder's self-report. Roles: Supervisor / Designer / Builder / Evaluator.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- Read evidence through `context.authorities`; `context.issue.execution.repositories` and any repository ID or alias are not mutation authority for QA. The host owns evidence persistence.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

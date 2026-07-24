@@ -3,6 +3,12 @@ hidden: true
 name: roll-.clarify
 license: MIT
 description: "Load when roll-build Fly mode input is vague or underspecified and the agent must ask targeted scope questions before planning or coding."
+workspace-execution-handoff: required
+workspace-context-scope: workspace_optional_read
+workspace-context-consumer: workspace
+workspace-context-operations: scope, workspace_target
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # roll-.clarify
 
@@ -117,3 +123,11 @@ Stop after the question. Do not append the generic planning/building handoff.
   repair; create intent can lead only to a canonical `--check` preview.
 - Reject or reload stale/invalid answers through the host as
   `invalid_workspace_clarification`; never reuse old candidates or guess.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. This skill may ask scope questions without Workspace authority, but if either copy exists it must consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing paired context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** for Workspace access and remain on `roll-.clarify workspace_target`.
+- Resolve any optional Workspace read only through `context.authorities`; `context.issue.execution.repositories` and every repository ID or alias remain unavailable to this skill.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity when context exists.
+- Legacy migration or recovery input is never authority; mutation and repository access are forbidden.

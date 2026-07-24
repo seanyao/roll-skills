@@ -2,6 +2,8 @@
 
 This file preserves the detailed contract extracted from SKILL.md. Read it when the hub points here for exact workflow steps, templates, rubrics, or recovery branches.
 
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
+
 ---
 
 # Roll Debug

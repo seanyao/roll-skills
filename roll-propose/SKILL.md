@@ -3,8 +3,16 @@ name: roll-propose
 license: MIT
 allowed-tools: "Read, Glob, Grep, Write, Bash(git:*)"
 description: "Load when the owner asks for product proposal drafts from project context that should go to .roll/proposals.md, not directly into backlog."
+workspace-execution-handoff: required
+workspace-context-scope: workspace_required_mutation
+workspace-context-consumer: workspace
+workspace-context-operations: propose
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # roll-propose
+
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
 
 ## Gotchas
 
@@ -159,3 +167,11 @@ rejected_reason: 与现有 roll-design 功能重叠，不需要单独技能
 
 ...
 ```
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- Resolve proposal and backlog state only through `context.authorities`; `context.issue.execution.repositories` and any repository ID or alias are not authority for proposals.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

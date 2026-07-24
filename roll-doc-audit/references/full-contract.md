@@ -2,13 +2,15 @@
 
 This file preserves the detailed contract extracted from SKILL.md. Read it when the hub points here for exact workflow steps, templates, rubrics, or recovery branches.
 
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
+
 ---
 
 # roll-doc-audit
 
 Documentation/product consistency audit plus legacy documentation automation (and deep-read Phase 3b): consistency audit (Phase 0 — shipped surfaces vs docs) → scan docs, user guidance, site pages, CLI help, and code surfaces → index → gap analysis → fill (directory-level) → deep read (cross-directory topics).
 
-Works on any project root. No manual mode switching — reads the project state and decides what to do.
+Works only on the repository execution selected by ID or alias from `context.issue.execution.repositories`. No manual mode switching or cwd fallback is allowed.
 
 ## When to Use
 
@@ -235,7 +237,7 @@ A clean run prints the report with no drift rows and the summary line `Drift fou
 
 ## Phase 1 — Scan & Index
 
-Scan the project root for all `*.md` files and known convention files.
+Scan the selected repository execution root for all `*.md` files and known convention files.
 
 **Exclusions — never scan these directories:**
 
@@ -643,7 +645,7 @@ Phase 2 **"AGENTS.md Where to Look bootstrap"** rule, which handles the **「文
 case (append a missing `## Where to Look` section to an existing `AGENTS.md`). The two rules
 never overlap — this one only fires when no `AGENTS.md` exists.
 
-**Detection rule:** project root has **no** `AGENTS.md` AND the source root (`src/`, or the
+**Detection rule:** the selected repository execution root has **no** `AGENTS.md` AND its source root (`src/`, or the
 equivalent — `lib/`, `app/`, `pkg/`, etc.) contains **≥ 3 subdirectories**. If `AGENTS.md`
 already exists, skip entirely (do not overwrite unless `--force`). If the source root has
 fewer than 3 subdirectories, skip — the project is too small to warrant a baseline doc.

@@ -44,7 +44,7 @@ test("all sixteen supporting skill families expose audited Workspace handoff con
   }
 });
 
-test("the handoff audit closes every family-operation policy with five route proofs", () => {
+test("the handoff audit closes every family-operation policy with derived fail-closed proofs", () => {
   const manifest = loadManifest();
   const report = auditSkills({ skillsDir: root, routeFile });
   const policies = manifest.workspaceContextPolicies.filter(({ surface }) => surface === "skill");
@@ -60,8 +60,26 @@ test("the handoff audit closes every family-operation policy with five route pro
   for (const policy of policies) {
     const skill = report.skills.find(({ name }) => name === policy.id);
     const results = skill.workspaceHandoffCaseResults.filter(({ operation }) => operation === policy.operation);
-    assert.equal(results.length, 5, `${policy.id}:${policy.operation} must execute five handoff route proofs`);
+    const cases = new Set(results.map((result) => result.case));
+    assert.ok(results.length >= 5, `${policy.id}:${policy.operation} must execute its policy-derived proof obligations`);
+    assert.ok(results.every((result) => result.passed), `${policy.id}:${policy.operation} proofs must pass`);
+    if (!["machine_only", "legacy_migration_only", "workspace_optional_read"].includes(policy.scope) && policy.id !== "roll-ws-create") {
+      assert.ok(cases.has("missing_context"), `${policy.id}:${policy.operation} must fail closed without context`);
+      assert.ok(cases.has("same_story_different_workspace"), `${policy.id}:${policy.operation} must isolate identical Story IDs across Workspaces`);
+    }
+    if (policy.repositorySelector === "required") {
+      for (const caseName of ["selected_repository", "missing_repository_selector", "unknown_repository_selector", "ambiguous_repository_selector"]) {
+        assert.ok(cases.has(caseName), `${policy.id}:${policy.operation} missing ${caseName}`);
+      }
+    }
+    if (policy.access === "read" && !["machine_only", "legacy_migration_only", "workspace_optional_read"].includes(policy.scope)) {
+      assert.ok(cases.has("mutation_forbidden"), `${policy.id}:${policy.operation} must prove the read-only boundary`);
+    }
+    if (policy.access === "mutation" && policy.repositorySelector === "required") {
+      assert.ok(cases.has("read_only_repository"), `${policy.id}:${policy.operation} must reject a read-only selected repository`);
+    }
   }
-  assert.equal(report.summary.workspaceHandoffCases, policies.length * 5);
+  assert.equal(report.summary.workspaceHandoffCases, report.skills.flatMap(({ workspaceHandoffCaseResults }) => workspaceHandoffCaseResults).length);
   assert.equal(report.summary.workspaceHandoffCaseFailures, 0);
+  assert.equal(report.summary.workspaceHandoffRegistryViolations, 0);
 });

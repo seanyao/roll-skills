@@ -2,6 +2,9 @@
 
 This file preserves the detailed contract extracted from SKILL.md. Read it when the hub points here for exact workflow steps, templates, rubrics, or recovery branches.
 
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
+Every `~/.shared/roll/loop/` path in this carrier is machine-only telemetry and never Workspace authority.
+
 ---
 
 # WK Generate Changelog
@@ -296,16 +299,11 @@ its own first draft. Set `ROLL_CHANGELOG_AUDIT_LOG` to redirect (tests only).
 caller's completion commit will pick up CHANGELOG.md.
 
 ```bash
-git add CHANGELOG.md
+git -C "<selected context.issue.execution.repositories[repoId].worktreePath>" add CHANGELOG.md
 ```
 
-**Standalone / manual path** (called outside a roll-build session): stage and commit.
-
-```bash
-git add CHANGELOG.md
-git commit -m "chore: sync changelog"
-git push
-```
+**Standalone / manual path**: stage the same file in the explicitly selected repository.
+Commit and push remain host-owned delivery actions and require their normal authorization.
 
 ## Integration
 

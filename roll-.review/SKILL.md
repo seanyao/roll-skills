@@ -4,6 +4,12 @@ name: roll-.review
 license: MIT
 allowed-tools: "Read, Bash(git:*)"
 description: "Load when a TCR micro-step needs self code review before commit, focused on bugs, regressions, security, and design issues."
+workspace-execution-handoff: required
+workspace-context-scope: repository_required
+workspace-context-consumer: repository
+workspace-context-operations: review
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # WK Self Code Review
 
@@ -150,3 +156,11 @@ In each micro-step of `$roll-build`:
 ## Role in v4 execution profiles
 
 Self-review is a TCR-step quality gate **within the Builder role** — it is NOT story acceptance. In the `verified`/`designed` execution profiles the independent **Evaluator** (a fresh session, never the Builder's) judges whether the delivery satisfies the contract; blocking review, score, and attest stay three SEPARATE dimensions (never one pass/fail). This skill is one Evaluator capability among review/qa/scoring. Roles: Supervisor / Designer / Builder / Evaluator.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- `review` reads only the selected repository in `context.issue.execution.repositories` by repository ID or alias. The host owns evidence persistence; this skill never mutates repository source.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

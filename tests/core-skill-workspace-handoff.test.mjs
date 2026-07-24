@@ -49,7 +49,7 @@ test("core delivery skills expose a complete Workspace execution handoff contrac
   assert.ok(report.scannedFiles.includes("roll-ws-create/agents/openai.yaml"));
 });
 
-test("all six core families execute the five Workspace handoff route proofs", () => {
+test("all six core families execute their policy-derived Workspace handoff proofs", () => {
   const report = auditSkills({
     skillsDir: root,
     routeFile: path.join(root, "route-cases", "skills.json"),
@@ -58,19 +58,17 @@ test("all six core families execute the five Workspace handoff route proofs", ()
   const results = coreFamilies.flatMap((family) => {
     const skill = report.skills.find((candidate) => candidate.name === family);
     assert.ok(skill, `missing audited core family ${family}`);
-    assert.equal(skill.workspaceHandoffCaseResults.length, 5, `${family} must execute five route proofs`);
+    assert.ok(skill.workspaceHandoffCaseResults.length >= 5, `${family} must execute its proof obligations`);
     return skill.workspaceHandoffCaseResults.map((result) => ({ family, ...result }));
   });
 
-  assert.equal(results.length, 30);
-  assert.equal(report.summary.workspaceHandoffCases, 30);
   assert.equal(report.summary.workspaceHandoffCaseFailures, 0);
   for (const result of results) {
     assert.equal(result.passed, true, `${result.family}:${result.case} failed: ${result.failures.join(", ")}`);
     assert.equal(result.actual, result.expected, `${result.family}:${result.case} outcome drifted`);
     assert.ok(result.proofs.length > 0, `${result.family}:${result.case} must report executable proofs`);
     assert.equal(typeof result.input, "object", `${result.family}:${result.case} must carry executable input`);
-    if (result.family !== "roll-ws-create") {
+    if (result.family !== "roll-ws-create" && result.input.promptContext != null) {
       assert.equal(result.input.promptContext.schema, "roll.workspace-execution-context/v1");
       assert.equal(result.input.promptContext.workspace.workspaceId, "roll");
       assert.equal(typeof result.input.promptContext.resolution.source, "string");
@@ -96,7 +94,7 @@ test("deterministic handoff evaluator fails closed on missing, conflict, multi-r
   const design = report.skills.find((skill) => skill.name === "roll-design");
   const build = report.skills.find((skill) => skill.name === "roll-build");
   const arbitrary = design.workspaceHandoffCaseResults.find((result) => result.case === "arbitrary_cwd").input;
-  const multiRepo = build.workspaceHandoffCaseResults.find((result) => result.case === "multi_repo").input;
+  const multiRepo = build.workspaceHandoffCaseResults.find((result) => result.case === "missing_repository_selector").input;
 
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
@@ -169,13 +167,13 @@ test("machine-only Workspace creation uses an explicit create handoff from arbit
   const manifest = JSON.parse(fs.readFileSync(path.join(root, "route-cases", "skills.json"), "utf8"));
   assert.equal(createSkill.workspaceExecutionHandoff, "machine_create_required");
   assert.doesNotMatch(createSkill.workspaceHandoffSection, /repository (?:ID|id) or alias/iu);
-  assert.deepEqual(manifest.workspaceHandoffCases["roll-ws-create"].map(({ case: caseName, expected }) => ({ case: caseName, expected })), [
-    { case: "arbitrary_cwd", expected: "use_explicit_create_preview" },
-    { case: "explicit_selector", expected: "use_explicit_create_identity" },
-    { case: "requirement_mismatch", expected: "stop_and_route_workspace_target" },
-    { case: "multi_repo", expected: "validate_all_create_config_bindings" },
-    { case: "legacy_boundary", expected: "reconcile_named_legacy_journals_only" },
-  ]);
+  assert.deepEqual(
+    manifest.workspaceHandoffCases.filter(({ id }) => id === "roll-ws-create").map(({ operation, proofProfile }) => ({ operation, proofProfile })),
+    [
+      { operation: "preview", proofProfile: "machine_create:read" },
+      { operation: "apply", proofProfile: "machine_create:mutation" },
+    ],
+  );
   assert.deepEqual(createSkill.workspaceCreateContractChecks, {
     exactPreviewTuple: true,
     authorizationDigestMismatchFailsClosed: true,
@@ -183,7 +181,7 @@ test("machine-only Workspace creation uses an explicit create handoff from arbit
     retryPreservesTupleOrRequiresFreshAuthorization: true,
   });
 
-  const explicit = createSkill.workspaceHandoffCaseResults.find((result) => result.case === "explicit_selector").input;
+  const explicit = createSkill.workspaceHandoffCaseResults.find((result) => result.case === "authorized_apply").input;
   const createPreview = createSkill.workspaceHandoffCaseResults.find((result) => result.case === "arbitrary_cwd").input;
   const optionalContext = structuredClone(manifest.workspaceExecutionContextFixtures.workspace);
   assert.equal(evaluateWorkspaceHandoffCase("roll-ws-create", "arbitrary_cwd", {
