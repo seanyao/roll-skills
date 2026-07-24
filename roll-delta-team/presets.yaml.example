@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# roll-delta-team — HOST-LOCAL preset example (NOT project configuration)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# This file is a machine-local EXAMPLE only. It is host-owned input, never Roll
+# project policy.
+#
+#   • Copy it to:  ~/.roll/delta-team/presets.yaml
+#   • It must NEVER be committed into a repository, .roll/agents.yaml,
+#     .roll/policy.yaml, or any @roll/core fixture.
+#   • The concrete model IDs below are a Pi-host example. Your live host
+#     inventory at delegation time is the sole authority for what can actually
+#     be selected — the preset is only a starting *preference*, not a router.
+#
+# A preset lists preferred models per role. Per-delegation resolution (design
+# §4.3) intersects these preferences with the host's live pool. See SKILL.md.
+#
+# schema/design reference: delta-team-plan.md §4.4 (pi-balanced-v1)
+# Current Pi seven-model pool this example is drawn from:
+#   a-proxy/claude-opus-4-8, a-proxy/claude-sonnet-5,
+#   deepseek/deepseek-v4-flash, deepseek/deepseek-v4-pro,
+#   o-proxy/gpt-5.6-luna, o-proxy/gpt-5.6-sol, o-proxy/gpt-5.6-terra
+
+schema: roll-delta-preset/v1
+presets:
+  - id: pi-balanced-v1
+    hostId: pi
+    roles:
+      designer:
+        preferredModelIds: [a-proxy/claude-opus-4-8, o-proxy/gpt-5.6-terra]
+        requiredTags: [reasoning]
+        diversity: prefer
+      builder:
+        preferredModelIds: [a-proxy/claude-sonnet-5, o-proxy/gpt-5.6-sol, deepseek/deepseek-v4-pro]
+        requiredTags: [coding]
+        preferredCostClass: medium
+        diversity: prefer
+      evaluator:
+        preferredModelIds: [o-proxy/gpt-5.6-terra, a-proxy/claude-opus-4-8, deepseek/deepseek-v4-pro]
+        requiredTags: [review]
+        diversity: require
+      peer:
+        preferredModelIds: [deepseek/deepseek-v4-flash, o-proxy/gpt-5.6-luna]
+        preferredCostClass: low
+        diversity: prefer

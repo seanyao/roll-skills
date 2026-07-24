@@ -91,6 +91,16 @@
         "write a daily owner brief"
       ]
     },
+    "roll-delta-team": {
+      "positive": [
+        "run a host-guided Delta Team delivery driving Designer, Builder, and Evaluator sub-agents through the roll delta protocol",
+        "as the coding-agent Supervisor, orchestrate an artifact-only D→B→E handoff with host-attested sessions"
+      ],
+      "negative": [
+        "implement a single US-XXX story yourself through standard TCR",
+        "coordinate the autonomous loop scheduler and reconcile backlog truth"
+      ]
+    },
     "roll-design": {
       "positive": [
         "discuss options and split this feature into INVEST stories",
