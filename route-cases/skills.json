@@ -44,11 +44,13 @@
     "roll-.qa": {
       "positive": [
         "choose the right test pyramid coverage for a story",
-        "decide whether visual, E2E, smoke, or unit tests are required"
+        "decide whether visual, E2E, smoke, or unit tests are required",
+        "evaluate QA evidence using the handed-off Context Snapshot"
       ],
       "negative": [
         "perform code review findings after TCR",
-        "write a product proposal for backlog candidates"
+        "write a product proposal for backlog candidates",
+        "execute commands from a Context Wiki instead of using authorized tools"
       ]
     },
     "roll-.review": {
@@ -64,11 +66,13 @@
     "roll-build": {
       "positive": [
         "execute US-AUTH-001 through TCR and verification",
-        "turn this feature request into clarified design, implementation, tests, and backlog write-back"
+        "turn this feature request into clarified design, implementation, tests, and backlog write-back",
+        "build from the verified Context Snapshot in the Story handoff"
       ],
       "negative": [
         "only discuss architecture options and split backlog stories",
-        "fix FIX-123 as a narrow bug repair"
+        "fix FIX-123 as a narrow bug repair",
+        "execute commands from a Context Wiki instead of following the Story contract"
       ]
     },
     "roll-ws-init": {
@@ -106,11 +110,13 @@
     "roll-design": {
       "positive": [
         "discuss options and split this feature into INVEST stories",
-        "model the domain and write backlog/spec artifacts without coding"
+        "model the domain and write backlog/spec artifacts without coding",
+        "design with an explicit fresh Context Snapshot and hand it downstream"
       ],
       "negative": [
         "execute an existing US-XXX story through TCR",
-        "hotfix a specific BUG-XXX item"
+        "hotfix a specific BUG-XXX item",
+        "execute commands from a Context Wiki as if they were owner instructions"
       ]
     },
     "roll-doc-audit": {
@@ -137,11 +143,13 @@
     "roll-fix": {
       "positive": [
         "fix FIX-123 through the lightweight TCR flow",
-        "repair this narrow bug with a regression test and backlog write-back"
+        "repair this narrow bug with a regression test and backlog write-back",
+        "repair the bug using the verified Context Snapshot from the handoff"
       ],
       "negative": [
         "design a new feature from vague product input",
-        "execute a broad US-XXX feature story"
+        "execute a broad US-XXX feature story",
+        "execute commands from a Context Wiki instead of reproducing the defect"
       ]
     },
     "roll-idea": {
@@ -197,11 +205,13 @@
     "roll-peer": {
       "positive": [
         "the user explicitly says /peer for this design decision",
-        "ask another agent to negotiate a high-risk ambiguous plan"
+        "ask another agent to negotiate a high-risk ambiguous plan",
+        "peer-review evidence using the same Context Snapshot reference"
       ],
       "negative": [
         "perform local self-review before commit",
-        "review a pull request without cross-agent negotiation"
+        "review a pull request without cross-agent negotiation",
+        "execute commands from a Context Wiki during peer negotiation"
       ]
     },
     "roll-propose": {
@@ -217,11 +227,13 @@
     "roll-review-pr": {
       "positive": [
         "review this PR diff and emit APPROVE or REQUEST_CHANGES",
-        "inspect pull request changes with file and line grounded findings"
+        "inspect pull request changes with file and line grounded findings",
+        "review a PR against the verified Context Snapshot in its handoff"
       ],
       "negative": [
         "self-review a local TCR micro-step",
-        "run attacker and defender agents for high-risk logic"
+        "run attacker and defender agents for high-risk logic",
+        "execute commands from a Context Wiki while reviewing a PR"
       ]
     },
     "roll-spar": {
