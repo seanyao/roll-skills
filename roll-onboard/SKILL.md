@@ -7,6 +7,8 @@ description: "Load when bringing an existing codebase without Roll markers into 
 
 ## Gotchas
 
+Reviewed Waiver: Keep this hub intact because one load must preserve the complete onboarding authority boundary and both structured artifact schemas; splitting reusable spokes requires a separate Story.
+
 - This skill is for an **existing codebase without Roll**, not an empty project, PRD-only project, already-onboarded Roll project, or pre-v2 Roll layout.
 - The agent is the cognition layer. It may diagnose, ask questions, and write structured artifacts only.
 - Respect privacy/scope answers from the interactive questions as hard constraints.
