@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,7 +48,9 @@ function auditMutatedCoreFixture({ skillName = "roll-build", mutateSkill, mutate
       writeFileSync(skillFile, mutateSkill(readFileSync(skillFile, "utf8")), "utf8");
     }
     if (addReference !== undefined) {
-      writeFileSync(path.join(skillDir, "references", "handoff-regression.md"), addReference, "utf8");
+      const referencesDir = path.join(skillDir, "references");
+      mkdirSync(referencesDir, { recursive: true });
+      writeFileSync(path.join(referencesDir, "handoff-regression.md"), addReference, "utf8");
     }
 
     const routes = JSON.parse(readFileSync(path.join(root, "route-cases", "skills.json"), "utf8"));
@@ -128,5 +130,23 @@ const allowedCreateJournal = auditMutatedCoreFixture({
   addReference: "Read and reconcile the named legacy workspace-init journal schema; never execute workspace-init.\n",
 });
 assert.deepEqual(allowedCreateJournal, []);
+
+const wrongMachineDeclaration = auditMutatedCoreFixture({
+  skillName: "roll-ws-create",
+  mutateSkill: (skill) => skill.replace(
+    "workspace-execution-handoff: machine_create_required",
+    "workspace-execution-handoff: required",
+  ),
+});
+assert.ok(wrongMachineDeclaration.includes("workspace-handoff-declaration-missing"));
+
+const machineReusesIssueContract = auditMutatedCoreFixture({
+  skillName: "roll-ws-create",
+  mutateSkill: (skill) => skill.replace(
+    "## Workflow",
+    "- Select a repository ID or alias from `context.issue.execution.repositories`.\n\n## Workflow",
+  ),
+});
+assert.ok(machineReusesIssueContract.includes("workspace-handoff-machine-create-reuses-issue-contract"));
 
 console.log("audit-skills tests passed");

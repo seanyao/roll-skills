@@ -117,7 +117,7 @@ verdict:
 
 Routing is a single axis now (US-AGENT-022): `est_min` maps to one of three
 complexity tiers — `easy` (≤8), `default` (8<x≤20), `hard` (>20) — and each
-tier binds to a locally-installed agent slot in `.roll/agents.yaml` (model =
+tier binds to the agent slot resolved from `context.authorities.policy` (model =
 the agent's own default; a `fallback` slot mechanically covers an unavailable
 agent). The retired v1 model (three-dimension type/est/risk_zone matching
 against `agent-routes.yaml`, soft history hit-rate preference, per-agent

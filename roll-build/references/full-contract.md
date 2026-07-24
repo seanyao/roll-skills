@@ -373,7 +373,7 @@ $(msg build.micro_step {N} "{description of smallest testable change}")
   `npm-pack.test.ts`) that are red locally / in a cycle worktree but green in
   CI. The FULL suite (`npm test`, no `--affected`) is the CI / pre-push gate
   (Phase 5), never the per-commit gate.
-- On green, `roll test` writes the proof record `.roll/last-test-pass`
+- On green, `roll test` writes the proof record beneath `context.authorities.runtime`
   (`{ts, tree, mode, scope}`). The `pre-commit` hook refuses the commit unless
   that proof is **fresh (≤ 60s)** AND its `tree` matches the current
   `git write-tree` — i.e. the exact code being committed was just tested. So:

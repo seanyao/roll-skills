@@ -50,7 +50,7 @@ Story as Builder (`roll-build` / `roll-fix`).
   contract (US-V4-021 aligned).
 - [Explorer annex](references/explorer-annex.md) — read-only sub-session for
   deep failure diagnosis.
-- Project overlay: `.roll/prime.local.md` when present (roll-meta).
+- Project overlay: the Supervisor policy overlay resolved beneath `context.authorities.policy` when present.
 
 ## Workflow Skeleton
 
@@ -89,4 +89,4 @@ Story as Builder (`roll-build` / `roll-fix`).
 - Observe repository state only through an Issue's `context.issue.execution.repositories`. If more than one repository exists and the handoff names no repository ID or alias, STOP with `missing_execution_context`; never choose the first entry.
 - On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or create one inside this skill.
 - Retry and continuation keep the same Workspace and Issue/Story identity while diagnosing or supervising a cycle. A different identity requires a new host handoff.
-- Legacy migration diagnosis may inspect legacy state only through an explicit `legacy_migration_only` boundary; it is not current supervision authority and does not expose a public Workspace init command.
+- Legacy migration diagnosis may inspect legacy state only through an explicit `legacy_migration_only` boundary; it is not current supervision authority, and only canonical migration/doctor commands may be suggested.

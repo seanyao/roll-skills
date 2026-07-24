@@ -1,7 +1,7 @@
 ---
 name: roll-ws-create
 description: Load when an operator wants to preview and create a complete Roll Workspace from a versioned config through the canonical `roll workspace create` surface.
-workspace-execution-handoff: required
+workspace-execution-handoff: machine_create_required
 workspace-context-scope: machine_only
 workspace-context-consumer:
 workspace-context-operations: preview,apply
@@ -20,13 +20,13 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 
 ## Workspace Execution Handoff
 
-- This is the `machine_only` exception because the target Workspace does not exist yet. If a host supplies a `Workspace Execution Context` prompt block or `ROLL_WORKSPACE_EXECUTION_CONTEXT`, it must supply both as semantically identical `roll.workspace-execution-context/v1` JSON. Missing one copy, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP**; the skill never repairs or rediscovers that context.
-- Preview consumes only an explicit create config and the CLI's returned `workspaceId`, `configSha256`, and `planSha256`. Apply consumes only an exact `roll.workspace-create-apply-authorization/v1` bound to those unchanged values; natural-language `create_new` permits preview only.
-- `context.authorities` is not available before creation and must not be synthesized from cwd or `.roll`. After creation, backlog, features, design, evidence, and runtime belong to a later verified Workspace handoff.
-- Issue repository commands are out of scope here. A later Issue handoff must use `context.issue.execution.repositories`; if it contains multiple repositories without a repository ID or alias, that later stage must STOP rather than choose the first entry.
+- This is the `machine_only` exception: normal creation starts with no Workspace execution context because the target does not exist. It consumes an explicit create handoff, never an inferred current Workspace.
+- If a host supplies either a `Workspace Execution Context` prompt block or `ROLL_WORKSPACE_EXECUTION_CONTEXT`, it must supply both; the pair must be semantically identical `roll.workspace-execution-context/v1` JSON. A partial pair, invalid JSON, or identity/schema conflict means **STOP**, but absence of both is valid for this machine-only flow.
+- Preview runs only through `--check` and records the returned `workspaceId`, `configSha256`, and `planSha256`. Apply consumes `roll.workspace-create-apply-authorization/v1` only when those values are unchanged; natural-language `create_new` permits preview only.
+- When the create config declares multiple repositories, validate all config bindings in the preview. Creation does not select one Issue repository and does not reuse an Issue execution contract.
 - On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or apply creation from the clarification answer.
-- Retry and continuation keep the same Workspace and Issue/Story identity when context exists, and keep the same create identity/digests during preview-to-authorization. Any change requires a fresh preview and authorization.
-- Legacy journal recovery is the only creation-time legacy boundary: the CLI may reconcile named historical journals, but the skill never exposes a public Workspace init command or treats legacy layout as authority.
+- Retry and continuation keep the same create identity and preview digests through authorization. Any config, identity, or plan change requires a fresh preview and authorization.
+- Legacy recovery may read and reconcile the named old `workspace-init` journal schema through the CLI only; it never executes that historical command or treats repository-local layout as authority.
 
 ## Workflow
 
@@ -85,8 +85,9 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
    roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --authorization /absolute/path/workspace-create-authorization.json --json
    ```
 
-8. After an interrupted apply, run `--check --json` again. Let the CLI reconcile
-   old `workspace-init` and current `workspace-create` journals. If either digest
+8. After an interrupted apply, run `--check --json` again. Let the CLI read and
+   reconcile the named old `workspace-init` journal schema and the current
+   `workspace-create` journal. If either digest
    changed, discard the old authorization and obtain owner approval for the new
    exact preview before retrying; never edit or delete a journal directly.
 9. Report the created Workspace ID and root. If the operator also requested

@@ -98,7 +98,7 @@ scanning.
 1. Scan `context.authorities.backlog` for all rows whose Status column contains `🔨 In Progress`.
 2. For each such row: revert the status back to
    `📋 Todo`, commit `chore: revert orphan 🔨 US-XXX to 📋`, and append
-   a line to `~/.shared/roll/loop/ALERT-<slug>.md` recording the orphan
+   a line beneath `context.authorities.runtime/alerts/` recording the orphan
    id and time so the next brief surfaces it.
 3. After orphan sweep, proceed to Step 1.5 (Pre-run CI health check) before scanning.
 
@@ -146,7 +146,7 @@ Call `roll loop pr-inbox` after the pre-run CI check passes. It walks
 
 **Rebase circuit breaker** — the runner records each rebase attempt under
 `pr_state.<PR>.attempts_at` in the per-slug state file
-(`~/.shared/roll/loop/state-<slug>.yaml`, FIX-052), pruning entries older
+(`context.authorities.runtime/state/<workspace-id>.yaml`, FIX-052), pruning entries older
 than 24 h. Once ≥3 attempts land within 24 h, further rebases are blocked and an
 ALERT is written (typical cause: a broken workflow file makes CI never run,
 which would otherwise drive infinite rebase loops).
@@ -193,7 +193,7 @@ Cap at `max_items_per_run` to limit blast radius per cycle.
 Loop has two layers of concurrency protection:
 
 1. **Per-project LOCK** (enforced by the v3 runner, see `packages/cli/src/runner/run-cycle.ts`):
-   - LOCK file path: `~/.shared/roll/loop/.LOCK-<project-slug>`
+   - LOCK file path: `context.authorities.locks/.LOCK-<workspace-id>`
    - On launch: if LOCK exists and the PID inside is alive → exit 0 (previous loop still running)
    - On launch: if LOCK exists but PID is dead → clean up stale LOCK and continue
    - On exit (normal or via trap): LOCK is removed
@@ -213,7 +213,7 @@ Together these mean: only one loop runs at a time per project (LOCK), and within
 >
 > Before this skill even starts, the v3 runner has already:
 > 1. Picked the next eligible Todo (priority FIX > US > REFACTOR, depends-on gate respected).
-> 2. Read its Agent profile (`est_min` / `risk_zone`) and routed an agent (hard rules from `.roll/agent-routes.yaml` + soft preference from `runs.jsonl`).
+> 2. Read its Agent profile (`est_min` / `risk_zone`) and route an agent using the policy resolved from `context.authorities.policy` plus the run history beneath `context.authorities.runtime`.
 > 3. Exported `ROLL_LOOP_ROUTED_STORY` / `ROLL_LOOP_ROUTED_AGENT` / `ROLL_LOOP_ROUTED_RULE` and printed `[loop] story <id> routed to <agent> via <rule_kind>` to cron.log.
 >
 > When `ROLL_LOOP_ROUTED_STORY` is set, prefer it as `US_ID` for this cycle. The story has already been chosen by hard+soft routing rules — and, per FIX-146, the runner re-validates it against the authoritative backlog right before handing it to you (re-picking the next eligible Todo if it went ✅ Done / In Progress / ineligible between pick and handoff, emitting a `story_stale` event). So treat `ROLL_LOOP_ROUTED_STORY` as already-eligible and just work it. Only if you still find at cycle start that it is no longer 📋 Todo in BACKLOG (a residual concurrent flip), signal `story_stale` and let the runner pick the next eligible Todo rather than idling the whole cycle.
@@ -248,8 +248,8 @@ REFACTOR-XXX      → Skill("roll-build", "REFACTOR-XXX")
 
 The executor will update the row to `✅ Done` on success (it transitions from `🔨 In Progress` → `✅ Done`, same Edit logic as from `📋 Todo`).
 
-Before invoking, also write current item to the per-slug state file
-(`~/.shared/roll/loop/state-<slug>.yaml`, FIX-052):
+Before invoking, also write current item to the Workspace state file beneath
+`context.authorities.runtime/state/` (FIX-052):
 
 ```yaml
 status: running
@@ -273,7 +273,7 @@ After each item completes:
    it derives `owner/repo` from the git remote and uses `gh -R <slug>`, which
    is required to work through `~/.ssh/config` host rewrites that break gh's
    auto-detection.
-   - CI passes → clear any `heal_count:` entry in `~/.shared/roll/loop/state-<slug>.yaml` (idempotent — drop the line if present, no-op otherwise) and continue normally
+   - CI passes → clear any `heal_count:` entry in the state file beneath `context.authorities.runtime/state/` (idempotent — drop the line if present, no-op otherwise) and continue normally
    - CI fails / times out / `gh` call fails → enter **CI self-heal** (US-AUTO-041)
    - `gh` binary not installed (`command -v gh` fails) → skip gracefully
      (return 0). Any other `gh` error is **not** "gh unavailable" — it is a
@@ -281,7 +281,7 @@ After each item completes:
 
    **CI self-heal (US-AUTO-041)** — bounded auto-fix before ALERT.
 
-   Read `heal_count:` from `~/.shared/roll/loop/state-<slug>.yaml`; treat a missing line as `0`. If the count is below `ROLL_LOOP_HEAL_MAX` (default 2) and `ROLL_LOOP_NO_HEAL` is not set, increment it and take Path A. Otherwise take Path B.
+   Read `heal_count:` from the handed-off runtime state file; treat a missing line as `0`. If the count is below `ROLL_LOOP_HEAL_MAX` (default 2) and `ROLL_LOOP_NO_HEAL` is not set, increment it and take Path A. Otherwise take Path B.
 
    **Path A — attempt allowed (counter incremented in `state-<slug>.yaml`):**
 
@@ -290,10 +290,10 @@ After each item completes:
       gh run view --log-failed --repo <slug> \
         $(gh run list --commit HEAD --json databaseId,conclusion -L 5 \
           | jq -r '.[] | select(.conclusion=="failure") | .databaseId' | head -1) \
-        2>/dev/null | head -200 > /tmp/roll-heal-<story_id>.log
+        2>/dev/null | head -200 > <runtime-authority>/ci-heal/<story_id>.log
       ```
    2. Invoke `Skill("roll-fix")` with brief:
-      `"CI red after <story_id>. Failing run logs at /tmp/roll-heal-<story_id>.log.
+      `"CI red after <story_id>. Failing run logs are beneath context.authorities.runtime/ci-heal/.
       Diagnose root cause, fix via TCR, commit, push. Do NOT change <story_id>'s
       BACKLOG status — it stays ✅ Done. The fix is a follow-up."`
    3. After `roll-fix` completes, return to step 2 (CI Gate) — re-run `roll ci --wait`.
@@ -313,10 +313,10 @@ After each item completes:
       the loop's main checkout, and the story is not re-picked meanwhile via the
       open-PR eligibility gate (FIX-146) / `deliveryLease`. The story's
       ✅ Done lands on main only when the reconciler confirms the merge.
-   2. Write ALERT to `~/.shared/roll/loop/ALERT-<slug>.md` with:
+   2. Write ALERT beneath `context.authorities.runtime/alerts/` with:
       - story ID, time, commit SHA
       - heal attempts made (read `heal_count:` from `state-<slug>.yaml`)
-      - last failure summary (head of `/tmp/roll-heal-<story_id>.log`)
+      - last failure summary from `context.authorities.runtime/ci-heal/<story_id>.log`
       - suggested actions: `$roll-fix` manually / inspect CI / `roll loop reset`
    3. Skip to next story.
 
@@ -337,14 +337,14 @@ After each item completes:
 After all items in this cycle:
 
 ```yaml
-# ~/.shared/roll/loop/state-<slug>.yaml (FIX-052)
+# context.authorities.runtime/state/<workspace-id>.yaml (FIX-052)
 status: idle
 last_run: "2026-05-10T02:15:00+08:00"
 last_run_items: [US-AUTH-003, FIX-007]
 last_run_outcome: success
 ```
 
-Then append a JSONL record to `~/.shared/roll/loop/runs.jsonl` for per-iteration
+Then append a JSONL record to `context.authorities.runtime/runs.jsonl` for per-iteration
 visibility (one line per cycle, append-only — never delete or rewrite earlier lines).
 
 **⚠️ Strict schema contract — do NOT deviate.** Every field has exactly one
@@ -366,7 +366,7 @@ final report in `cron.log` instead.
 | Field | Type | Format / Enum |
 |---|---|---|
 | `ts` | string | ISO 8601 **UTC** with `Z` suffix. Get via `date -u +%Y-%m-%dT%H:%M:%SZ`. Never use `+08:00` or other offsets. |
-| `project` | string | Project **slug** only (e.g. `roll-d9dfa0`), NOT the absolute path and NOT plain `basename`. Compute via: `p=$(pwd -P); base=$(basename "$p" | tr -cs '[:alnum:]' '-' | sed 's/-*$//'); hash=$(printf '%s' "$p" | md5 | cut -c1-6 2>/dev/null || printf '%s' "$p" | md5sum | cut -c1-6); echo "${base}-${hash}"` |
+| `project` | string | The verified `context.workspace.workspaceId`; never derive identity from cwd or a repository basename. |
 | `run_id` | string | Matches `state-<slug>.yaml` `run_id` exactly. Format: `loop-YYYYMMDD-HHMM`. |
 | `status` | enum | Exactly one of: `built` (≥1 story shipped), `idle` (no Todo items found), `failed` (paused/error). **No synonyms.** |
 | `built` | array&lt;string&gt; | Story ids completed this cycle. `[]` when none. **Always array, never null/number.** |
@@ -382,13 +382,8 @@ Optional field, only when `status == "failed"`:
 
 ```bash
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-# Compute project slug — inlined equivalent of bin/roll's _project_slug
-# (Claude sessions can't call roll's internal functions, so we inline).
-# Must produce identical output to _project_slug to match `roll loop runs` filter.
-_p=$(pwd -P)
-_base=$(basename "$_p" | tr -cs '[:alnum:]' '-' | sed 's/-*$//')
-_hash=$(printf '%s' "$_p" | md5 | cut -c1-6 2>/dev/null || printf '%s' "$_p" | md5sum | cut -c1-6)
-project="${_base}-${_hash}"  # e.g. roll-d9dfa0 — must match roll loop runs filter
+# Project identity is injected from the verified handoff.
+project="<context.workspace.workspaceId>"
 # duration_sec = cycle_end_epoch - cycle_start_epoch (track at Step 1)
 # tcr_count = git log --oneline --since="<cycle_start>" | grep -c '^[a-f0-9]* tcr:'
 
@@ -405,7 +400,7 @@ jq -nc \
   '{ts:$ts, project:$project, run_id:$run_id, status:$status,
     built:$built, skipped:$skipped, alerts:$alerts,
     tcr_count:$tcr_count, duration_sec:$duration_sec}' \
-  >> ~/.shared/roll/loop/runs.jsonl
+  >> <runtime-authority>/runs.jsonl
 ```
 
 The companion read-side is `roll loop runs [N] [--all]` — shows the most recent
@@ -458,7 +453,7 @@ reason: "primary agent (claude) unavailable after 3 attempts"
 - Take over manually: `$roll-build US-AUTH-003`
 ```
 
-3. Write alert file to `~/.shared/roll/loop/ALERT-<slug>.md`
+3. Write the alert beneath `context.authorities.runtime/alerts/`
 
 ## Resuming After Pause
 
@@ -477,7 +472,7 @@ cannot fulfill these requirements.
 ### Local cron (default)
 
 Install once with `roll loop on` — agent selection happens per cycle from the
-`.roll/agents.yaml` complexity slots (easy/default/hard/fallback), so the cron
+the agent-routing policy resolved from `context.authorities.policy`, so the cron
 entry is agent-agnostic. No agent-specific command needed.
 
 ```bash
@@ -532,7 +527,7 @@ roll-loop
   ├── invokes    $roll-build (US-XXX, REFACTOR-XXX)
   ├── invokes    $roll-fix (FIX-XXX)
   ├── invokes    $roll-brief (on Feature completion)
-  ├── reads      ~/.roll/config.yaml (agent routing)
-  ├── writes     ~/.shared/roll/loop/state-<slug>.yaml
-  └── writes     ~/.shared/roll/loop/ALERT-<slug>.md (on failure)
+  ├── reads      explicit machine config plus context.authorities.policy
+  ├── writes     context.authorities.runtime/state/
+  └── writes     context.authorities.runtime/alerts/ (on failure)
 ```

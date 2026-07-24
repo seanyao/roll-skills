@@ -87,11 +87,11 @@
       { "case": "legacy_boundary", "expected": "legacy_migration_only" }
     ],
     "roll-ws-create": [
-      { "case": "arbitrary_cwd", "expected": "use_explicit_create_handoff" },
-      { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
+      { "case": "arbitrary_cwd", "expected": "use_explicit_create_preview" },
+      { "case": "explicit_selector", "expected": "use_explicit_create_identity" },
       { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
-      { "case": "multi_repo", "expected": "stop_without_repository_selector" },
-      { "case": "legacy_boundary", "expected": "legacy_journal_recovery_only" }
+      { "case": "multi_repo", "expected": "validate_all_create_config_bindings" },
+      { "case": "legacy_boundary", "expected": "reconcile_named_legacy_journals_only" }
     ]
   },
   "skills": {

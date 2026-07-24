@@ -78,8 +78,9 @@ Most time is SUPERVISOR: **dispatch Delta Team + Peers, watch, explain, escalate
 Default: all live non-Hold `US-*`, `FIX-*`, `REFACTOR-*`. Name exclusions.
 
 ### Step 2 — Reconcile before scheduling
-Read: `roll supervisor next --json`, `roll supervisor why`, `git status`,
-`git -C .roll status`, recent `events.ndjson` / `runs.jsonl`, open PRs, CI,
+Read: `roll supervisor next --json`, `roll supervisor why`, repository status
+through the selected Issue repository, recent events from `context.authorities.events`,
+run history from `context.authorities.runtime`, open PRs, CI,
 pause marker, preserved worktrees.
 
 Never recommend an already-Done card when live Todo rows exist.

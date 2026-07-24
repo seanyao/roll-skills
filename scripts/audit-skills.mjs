@@ -22,8 +22,15 @@ const WORKSPACE_HANDOFF_TAXONOMY = {
 };
 
 function expectedHandoffOutcome(skillName, taxonomy) {
-  if (skillName === "roll-ws-create" && taxonomy === "arbitrary_cwd") return "use_explicit_create_handoff";
-  if (skillName === "roll-ws-create" && taxonomy === "legacy_boundary") return "legacy_journal_recovery_only";
+  if (skillName === "roll-ws-create") {
+    return {
+      arbitrary_cwd: "use_explicit_create_preview",
+      explicit_selector: "use_explicit_create_identity",
+      requirement_mismatch: "stop_and_route_workspace_target",
+      multi_repo: "validate_all_create_config_bindings",
+      legacy_boundary: "reconcile_named_legacy_journals_only",
+    }[taxonomy];
+  }
   return WORKSPACE_HANDOFF_TAXONOMY[taxonomy];
 }
 
@@ -159,31 +166,52 @@ function collectContractText(skillDir) {
     .map((file) => ({ file, text: readText(file) }));
 }
 
-function legacyBoundaryLine(line) {
-  return /legacy|historical|migration|journal|recovery|removed|retired|reject/iu.test(line);
+function explicitlyRejects(line, matchIndex) {
+  return /(?:forbid(?:s|den)?|never|must not|do not|instead of|rather than)\b[^.;]*$/iu.test(
+    line.slice(0, matchIndex),
+  );
 }
 
-function staleAuthorityViolations(skillDir) {
+function allowedCreateJournalReference(skillName, line) {
+  if (skillName !== "roll-ws-create") return false;
+  const dangerousExecution = line.match(/\b(?:run|execute|apply|invoke)\b/iu);
+  if (dangerousExecution?.index !== undefined && !explicitlyRejects(line, dangerousExecution.index)) return false;
+  return /\b(?:read|reconcile)\b/iu.test(line) &&
+    /(?:named|old|historical|legacy)[^.\n]*workspace[ -]init[^.\n]*journal/iu.test(line);
+}
+
+function staleAuthorityViolations(skillName, skillDir) {
   const violations = [];
   for (const { file, text } of collectContractText(skillDir)) {
     const relative = toPosix(path.relative(skillDir, file));
     for (const [offset, line] of text.split(/\r?\n/u).entries()) {
       const location = `${relative}:${offset + 1}`;
-      const explicitlyForbidden = /forbid|forbidden|never|must not|do not|instead of|rather than/iu.test(line);
-      if (
-        /\.roll\/(?:backlog\.md|features\/|design\/|domain\/|loop\/)/u.test(line) &&
-        !legacyBoundaryLine(line) &&
-        !explicitlyForbidden
-      ) {
+      const stalePath = line.match(/\.roll\/(?:backlog\.md|features\/|design\/|domain\/|loop\/|prime\.local\.md|agent-routes\.yaml|agents\.yaml|last-test-pass)/u);
+      if (stalePath?.index !== undefined && !explicitlyRejects(line, stalePath.index)) {
         violations.push(`stale-workspace-authority:${location}`);
       }
-      if (/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD/u.test(line) && !explicitlyForbidden) {
+      const ambientPwd = line.match(/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD|\bpwd\s+-P\b/u);
+      if (ambientPwd?.index !== undefined && !explicitlyRejects(line, ambientPwd.index)) {
         violations.push(`ambient-pwd-authority:${location}`);
       }
-      if (/\broll (?:workspace )?init\b|workspace-init/iu.test(line) && !legacyBoundaryLine(line)) {
+      const fixedLoopRuntime = line.match(/~\/\.shared\/roll\/loop\//u);
+      if (fixedLoopRuntime?.index !== undefined && !explicitlyRejects(line, fixedLoopRuntime.index)) {
+        violations.push(`fixed-loop-runtime-authority:${location}`);
+      }
+      const localRollGit = line.match(/git\s+-C\s+`?\.roll(?:\s|`|$)/iu);
+      if (localRollGit?.index !== undefined && !explicitlyRejects(line, localRollGit.index)) {
+        violations.push(`repository-local-roll-authority:${location}`);
+      }
+      const publicInit = line.match(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/iu);
+      if (
+        publicInit?.index !== undefined &&
+        !explicitlyRejects(line, publicInit.index) &&
+        !allowedCreateJournalReference(skillName, line)
+      ) {
         violations.push(`public-workspace-init:${location}`);
       }
-      if (/global current Workspace/iu.test(line) && !/no |not |never |does not |without /iu.test(line)) {
+      const globalCurrent = line.match(/global current Workspace/iu);
+      if (globalCurrent?.index !== undefined && !explicitlyRejects(line, globalCurrent.index) && !/\b(?:no|not|without)\b/iu.test(line.slice(0, globalCurrent.index))) {
         violations.push(`global-current-workspace:${location}`);
       }
     }
@@ -265,7 +293,9 @@ function workspaceHandoffViolationsFor(skill, routes) {
   const ambientPolicies = [...new Set(policies.map((policy) => policy.allowsAmbientCwd))];
   const legacyPolicies = [...new Set(policies.map((policy) => policy.allowsLegacyRollPath))];
 
-  if (skill.workspaceExecutionHandoff !== "required") violations.push("workspace-handoff-declaration-missing");
+  const machineCreate = skill.name === "roll-ws-create";
+  const expectedDeclaration = machineCreate ? "machine_create_required" : "required";
+  if (skill.workspaceExecutionHandoff !== expectedDeclaration) violations.push("workspace-handoff-declaration-missing");
   if (policyScopes.length !== 1 || skill.workspaceContextScope !== policyScopes[0]) {
     violations.push("workspace-handoff-policy-mismatch:scope");
   }
@@ -286,21 +316,35 @@ function workspaceHandoffViolationsFor(skill, routes) {
   if (section === "") {
     violations.push("workspace-handoff-section-missing");
   } else {
-    const requiredMarkers = [
-      ["prompt-block", /prompt block/iu],
-      ["environment", /ROLL_WORKSPACE_EXECUTION_CONTEXT/u],
-      ["semantic-equality", /semantically identical/iu],
-      ["fail-closed", /missing[\s\S]*invalid JSON[\s\S]*schema mismatch[\s\S]*Workspace mismatch[\s\S]*Story mismatch[\s\S]*scope mismatch[\s\S]*STOP/iu],
-      ["authorities", /context\.authorities/u],
-      ["repositories", /issue\.execution\.repositories/u],
-      ["multi-repo-selector", /repository (?:ID|id) or alias/iu],
-      ["clarify-route", /roll-\.clarify workspace_target/u],
-      ["no-rediscovery", /(?:do not|never)[^.\n]*(?:rediscover|discovery)[^.\n]*(?:cwd|\.roll)/iu],
-      ["identity-continuity", /retry[^.\n]*continuation[^.\n]*same[^.\n]*(?:Workspace|workspace)[^.\n]*(?:Issue|Story|story)/iu],
-      ["legacy-boundary", /legacy[^.\n]*(?:migration|journal|recovery)/iu],
-    ];
+    const requiredMarkers = machineCreate
+      ? [
+          ["machine-create", /machine_only[\s\S]*(?:normal creation|normally absent)[^\n]*(?:no|without)[^\n]*Workspace execution context/iu],
+          ["optional-context-pair", /prompt block[\s\S]*ROLL_WORKSPACE_EXECUTION_CONTEXT[\s\S]*(?:both|pair)[\s\S]*semantically identical/iu],
+          ["preview", /--check[\s\S]*workspaceId[\s\S]*configSha256[\s\S]*planSha256/iu],
+          ["authorization", /roll\.workspace-create-apply-authorization\/v1[\s\S]*unchanged/iu],
+          ["create-new-preview", /create_new[^.\n]*preview only/iu],
+          ["multi-repo-config", /multiple repositories[^.\n]*validate (?:all|every)[^.\n]*config bindings/iu],
+          ["clarify-route", /roll-\.clarify workspace_target/u],
+          ["legacy-journal", /(?:read|reconcile)[^.\n]*(?:named|old|historical|legacy)[^.\n]*workspace-init[^.\n]*journal/iu],
+        ]
+      : [
+          ["prompt-block", /prompt block/iu],
+          ["environment", /ROLL_WORKSPACE_EXECUTION_CONTEXT/u],
+          ["semantic-equality", /semantically identical/iu],
+          ["fail-closed", /missing[\s\S]*invalid JSON[\s\S]*schema mismatch[\s\S]*Workspace mismatch[\s\S]*Story mismatch[\s\S]*scope mismatch[\s\S]*STOP/iu],
+          ["authorities", /context\.authorities/u],
+          ["repositories", /issue\.execution\.repositories/u],
+          ["multi-repo-selector", /repository (?:ID|id) or alias/iu],
+          ["clarify-route", /roll-\.clarify workspace_target/u],
+          ["no-rediscovery", /(?:do not|never)[^.\n]*(?:rediscover|discovery)[^.\n]*(?:cwd|\.roll)/iu],
+          ["identity-continuity", /retry[^.\n]*continuation[^.\n]*same[^.\n]*(?:Workspace|workspace)[^.\n]*(?:Issue|Story|story)/iu],
+          ["legacy-boundary", /legacy[^.\n]*(?:migration|journal|recovery)/iu],
+        ];
     for (const [name, pattern] of requiredMarkers) {
       if (!pattern.test(section)) violations.push(`workspace-handoff-marker-missing:${name}`);
+    }
+    if (machineCreate && /issue\.execution\.repositories|repository (?:ID|id) or alias/iu.test(section)) {
+      violations.push("workspace-handoff-machine-create-reuses-issue-contract");
     }
   }
 
@@ -326,7 +370,7 @@ function workspaceHandoffViolationsFor(skill, routes) {
     }
   }
 
-  violations.push(...staleAuthorityViolations(path.dirname(skill.file)));
+  violations.push(...staleAuthorityViolations(skill.name, path.dirname(skill.file)));
   return violations;
 }
 
