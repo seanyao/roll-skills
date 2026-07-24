@@ -3,7 +3,7 @@
   "workspaceContextPolicies": [
     { "surface": "skill", "id": "roll-.changelog", "operation": "generate", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
     { "surface": "skill", "id": "roll-.clarify", "operation": "scope", "scope": "workspace_optional_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
-    { "surface": "skill", "id": "roll-.clarify", "operation": "workspace_target", "scope": "workspace_required_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.clarify", "operation": "workspace_target", "scope": "workspace_optional_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
     { "surface": "skill", "id": "roll-.dream", "operation": "scan", "scope": "workspace_required_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
     { "surface": "skill", "id": "roll-.echo", "operation": "restate", "scope": "machine_only", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
     { "surface": "skill", "id": "roll-.qa", "operation": "evaluate", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },

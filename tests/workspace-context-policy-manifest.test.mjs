@@ -34,4 +34,16 @@ test("mixed create and clarify skills expose independent operations", () => {
     policies.filter((policy) => policy.id === "roll-.clarify").map((policy) => policy.operation).sort(),
     ["scope", "workspace_target"],
   );
+  assert.deepEqual(
+    policies.find((policy) => policy.id === "roll-.clarify" && policy.operation === "workspace_target"),
+    {
+      surface: "skill",
+      id: "roll-.clarify",
+      operation: "workspace_target",
+      scope: "workspace_optional_read",
+      contextConsumer: "workspace",
+      allowsAmbientCwd: false,
+      allowsLegacyRollPath: false,
+    },
+  );
 });
