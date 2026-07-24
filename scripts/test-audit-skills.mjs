@@ -38,11 +38,11 @@ assert.equal(report.summary.skills, 4);
 assert.equal(report.skills.find((skill) => skill.name === "minimal-skill").violations.includes("gotchas-missing"), true);
 assert.equal(report.skills.find((skill) => skill.name === "spoke-skill").violations.length, 0);
 
-function auditMutatedBuildFixture({ mutateSkill, mutateRoutes, addReference } = {}) {
+function auditMutatedCoreFixture({ skillName = "roll-build", mutateSkill, mutateRoutes, addReference } = {}) {
   const tempRoot = mkdtempSync(path.join(tmpdir(), "roll-skill-handoff-audit-"));
   try {
-    const skillDir = path.join(tempRoot, "roll-build");
-    cpSync(path.join(root, "roll-build"), skillDir, { recursive: true });
+    const skillDir = path.join(tempRoot, skillName);
+    cpSync(path.join(root, skillName), skillDir, { recursive: true });
     const skillFile = path.join(skillDir, "SKILL.md");
     if (mutateSkill !== undefined) {
       writeFileSync(skillFile, mutateSkill(readFileSync(skillFile, "utf8")), "utf8");
@@ -61,17 +61,17 @@ function auditMutatedBuildFixture({ mutateSkill, mutateRoutes, addReference } = 
   }
 }
 
-const missingSection = auditMutatedBuildFixture({
+const missingSection = auditMutatedCoreFixture({
   mutateSkill: (skill) => skill.replace(/\n## Workspace Execution Handoff[\s\S]*?(?=\n## Context Snapshot Handoff)/u, ""),
 });
 assert.ok(missingSection.includes("workspace-handoff-section-missing"));
 
-const policyMismatch = auditMutatedBuildFixture({
+const policyMismatch = auditMutatedCoreFixture({
   mutateSkill: (skill) => skill.replace("workspace-context-scope: issue_required", "workspace-context-scope: workspace_required_read"),
 });
 assert.ok(policyMismatch.includes("workspace-handoff-policy-mismatch:scope"));
 
-const brokenTaxonomy = auditMutatedBuildFixture({
+const brokenTaxonomy = auditMutatedCoreFixture({
   mutateRoutes: (routes) => {
     routes.workspaceHandoffCases["roll-build"] = [
       { case: "arbitrary_cwd", expected: "use_handoff_authorities" },
@@ -88,7 +88,7 @@ assert.ok(brokenTaxonomy.includes("workspace-handoff-case-unknown:unknown_case")
 assert.ok(brokenTaxonomy.includes("workspace-handoff-case-outcome-invalid:explicit_selector"));
 assert.ok(brokenTaxonomy.includes("workspace-handoff-case-missing:requirement_mismatch"));
 
-const wrongFamilyOutcome = auditMutatedBuildFixture({
+const wrongFamilyOutcome = auditMutatedCoreFixture({
   mutateRoutes: (routes) => {
     routes.workspaceHandoffCases["roll-build"].find((item) => item.case === "arbitrary_cwd").expected =
       "use_explicit_create_handoff";
@@ -96,15 +96,37 @@ const wrongFamilyOutcome = auditMutatedBuildFixture({
 });
 assert.ok(wrongFamilyOutcome.includes("workspace-handoff-case-outcome-invalid:arbitrary_cwd"));
 
-const staleAuthority = auditMutatedBuildFixture({
+const staleAuthority = auditMutatedCoreFixture({
   addReference: "Use .roll/backlog.md as the source of truth.\nRun roll init before delivery.\n",
 });
 assert.ok(staleAuthority.some((violation) => violation.startsWith("stale-workspace-authority:")));
 assert.ok(staleAuthority.some((violation) => violation.startsWith("public-workspace-init:")));
 
-const allowedLegacyJournal = auditMutatedBuildFixture({
+const hiddenAmbientAuthorities = auditMutatedCoreFixture({
+  addReference: [
+    "Resolve the project authority with pwd -P.",
+    "Read ~/.shared/roll/loop/runs.jsonl for runtime truth.",
+    "Run git -C .roll status before continuing.",
+  ].join("\n"),
+});
+assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("ambient-pwd-authority:")));
+assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("fixed-loop-runtime-authority:")));
+assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("repository-local-roll-authority:")));
+
+const dangerousLegacyInit = auditMutatedCoreFixture({
+  addReference: "During legacy migration, run workspace-init to continue.\n",
+});
+assert.ok(dangerousLegacyInit.some((violation) => violation.startsWith("public-workspace-init:")));
+
+const buildCannotClaimJournalException = auditMutatedCoreFixture({
   addReference: "Legacy journal recovery may reconcile named workspace-init records.\n",
 });
-assert.deepEqual(allowedLegacyJournal, []);
+assert.ok(buildCannotClaimJournalException.some((violation) => violation.startsWith("public-workspace-init:")));
+
+const allowedCreateJournal = auditMutatedCoreFixture({
+  skillName: "roll-ws-create",
+  addReference: "Read and reconcile the named legacy workspace-init journal schema; never execute workspace-init.\n",
+});
+assert.deepEqual(allowedCreateJournal, []);
 
 console.log("audit-skills tests passed");
