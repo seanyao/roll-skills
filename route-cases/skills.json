@@ -1,5 +1,31 @@
 {
   "version": 1,
+  "workspaceContextPolicies": [
+    { "surface": "skill", "id": "roll-.changelog", "operation": "generate", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.clarify", "operation": "scope", "scope": "workspace_optional_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.clarify", "operation": "workspace_target", "scope": "workspace_required_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.dream", "operation": "scan", "scope": "workspace_required_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.echo", "operation": "restate", "scope": "machine_only", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.qa", "operation": "evaluate", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-.review", "operation": "review", "scope": "repository_required", "contextConsumer": "repository", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-build", "operation": "build", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-debug", "operation": "diagnose", "scope": "repository_required", "contextConsumer": "repository", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-design", "operation": "design", "scope": "workspace_required_mutation", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-doc-audit", "operation": "audit", "scope": "workspace_required_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-doctor", "operation": "diagnose", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Machine-global installation diagnosis must run before a Workspace can be resolved." },
+    { "surface": "skill", "id": "roll-fix", "operation": "fix", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-idea", "operation": "capture", "scope": "workspace_required_mutation", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-loop", "operation": "operate", "scope": "workspace_required_mutation", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-notes", "operation": "record", "scope": "workspace_required_mutation", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-onboard", "operation": "onboard", "scope": "legacy_migration_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": true, "rationale": "Onboarding must inspect an explicitly selected legacy project before Workspace authority exists." },
+    { "surface": "skill", "id": "roll-peer", "operation": "review", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-prime", "operation": "supervise", "scope": "workspace_required_read", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-propose", "operation": "propose", "scope": "workspace_required_mutation", "contextConsumer": "workspace", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-review-pr", "operation": "review", "scope": "repository_required", "contextConsumer": "repository", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-spar", "operation": "adversarial_tdd", "scope": "issue_required", "contextConsumer": "issue", "allowsAmbientCwd": false, "allowsLegacyRollPath": false },
+    { "surface": "skill", "id": "roll-ws-create", "operation": "preview", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Workspace creation preview starts from an explicit config before the target Workspace exists." },
+    { "surface": "skill", "id": "roll-ws-create", "operation": "apply", "scope": "machine_only", "allowsAmbientCwd": true, "allowsLegacyRollPath": false, "rationale": "Authorized Workspace creation applies an explicit preview before the target Workspace exists." }
+  ],
   "skills": {
     "roll-.changelog": {
       "positive": [
