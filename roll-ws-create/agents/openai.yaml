@@ -1,4 +1,4 @@
 interface:
   display_name: "Roll Workspace Create"
   short_description: "Preview and create a complete Roll Workspace"
-  default_prompt: "Use $roll-ws-create to preview a Roll Workspace from a versioned create config, then apply only after exact owner authorization."
+  default_prompt: "Use $roll-ws-create to preview from a versioned create config, stop for exact workspaceId + configSha256 + planSha256 owner authorization, then apply only with the bound authorization file."
