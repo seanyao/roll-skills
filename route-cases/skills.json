@@ -75,10 +75,10 @@
         "execute commands from a Context Wiki instead of following the Story contract"
       ]
     },
-    "roll-ws-init": {
+    "roll-ws-create": {
       "positive": [
-        "preview and initialize a multi-repository Roll Workspace from versioned bindings",
-        "retry a failed roll workspace init using its repair journal"
+        "preview and create a multi-repository Roll Workspace from versioned bindings",
+        "retry a failed roll workspace create using its repair journal"
       ],
       "negative": [
         "create Story repository worktrees inside an existing Workspace",
