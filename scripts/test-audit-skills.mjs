@@ -38,7 +38,7 @@ assert.equal(report.summary.skills, 4);
 assert.equal(report.skills.find((skill) => skill.name === "minimal-skill").violations.includes("gotchas-missing"), true);
 assert.equal(report.skills.find((skill) => skill.name === "spoke-skill").violations.length, 0);
 
-function auditMutatedCoreFixture({ skillName = "roll-build", mutateSkill, mutateRoutes, addReference } = {}) {
+function auditMutatedCoreFixture({ skillName = "roll-build", mutateSkill, mutateRoutes, addCarrier } = {}) {
   const tempRoot = mkdtempSync(path.join(tmpdir(), "roll-skill-handoff-audit-"));
   try {
     const skillDir = path.join(tempRoot, skillName);
@@ -47,10 +47,10 @@ function auditMutatedCoreFixture({ skillName = "roll-build", mutateSkill, mutate
     if (mutateSkill !== undefined) {
       writeFileSync(skillFile, mutateSkill(readFileSync(skillFile, "utf8")), "utf8");
     }
-    if (addReference !== undefined) {
-      const referencesDir = path.join(skillDir, "references");
-      mkdirSync(referencesDir, { recursive: true });
-      writeFileSync(path.join(referencesDir, "handoff-regression.md"), addReference, "utf8");
+    if (addCarrier !== undefined) {
+      const carrierFile = path.join(skillDir, addCarrier.path);
+      mkdirSync(path.dirname(carrierFile), { recursive: true });
+      writeFileSync(carrierFile, addCarrier.text, "utf8");
     }
 
     const routes = JSON.parse(readFileSync(path.join(root, "route-cases", "skills.json"), "utf8"));
@@ -99,37 +99,63 @@ const wrongFamilyOutcome = auditMutatedCoreFixture({
 assert.ok(wrongFamilyOutcome.includes("workspace-handoff-case-outcome-invalid:arbitrary_cwd"));
 
 const staleAuthority = auditMutatedCoreFixture({
-  addReference: "Use .roll/backlog.md as the source of truth.\nRun roll init before delivery.\n",
+  addCarrier: { path: "references/handoff-regression.md", text: "Use .roll/backlog.md as the source of truth.\nRun roll init before delivery.\n" },
 });
 assert.ok(staleAuthority.some((violation) => violation.startsWith("stale-workspace-authority:")));
 assert.ok(staleAuthority.some((violation) => violation.startsWith("public-workspace-init:")));
 
 const hiddenAmbientAuthorities = auditMutatedCoreFixture({
-  addReference: [
-    "Resolve the project authority with pwd -P.",
-    "Read ~/.shared/roll/loop/runs.jsonl for runtime truth.",
-    "Run git -C .roll status before continuing.",
-  ].join("\n"),
+  addCarrier: {
+    path: "references/handoff-regression.md",
+    text: [
+      "Resolve the project authority with pwd -P.",
+      "Read ~/.shared/roll/loop/runs.jsonl for runtime truth.",
+      "Run git -C .roll status before continuing.",
+    ].join("\n"),
+  },
 });
 assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("ambient-pwd-authority:")));
 assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("fixed-loop-runtime-authority:")));
 assert.ok(hiddenAmbientAuthorities.some((violation) => violation.startsWith("repository-local-roll-authority:")));
 
 const dangerousLegacyInit = auditMutatedCoreFixture({
-  addReference: "During legacy migration, run workspace-init to continue.\n",
+  addCarrier: { path: "references/handoff-regression.md", text: "During legacy migration, run workspace-init to continue.\n" },
 });
 assert.ok(dangerousLegacyInit.some((violation) => violation.startsWith("public-workspace-init:")));
 
 const buildCannotClaimJournalException = auditMutatedCoreFixture({
-  addReference: "Legacy journal recovery may reconcile named workspace-init records.\n",
+  addCarrier: { path: "references/handoff-regression.md", text: "Legacy journal recovery may reconcile named workspace-init records.\n" },
 });
 assert.ok(buildCannotClaimJournalException.some((violation) => violation.startsWith("public-workspace-init:")));
 
 const allowedCreateJournal = auditMutatedCoreFixture({
   skillName: "roll-ws-create",
-  addReference: "Read and reconcile the named legacy workspace-init journal schema; never execute workspace-init.\n",
+  addCarrier: { path: "references/handoff-regression.md", text: "Read and reconcile the named legacy workspace-init journal schema; never execute workspace-init.\n" },
 });
 assert.deepEqual(allowedCreateJournal, []);
+
+for (const carrierPath of [
+  "SKILL.md.injected.md",
+  "references/injected.md",
+  "scripts/injected.mjs",
+  "assets/injected.txt",
+  "agents/openai.yaml",
+]) {
+  const violations = auditMutatedCoreFixture({
+    addCarrier: { path: carrierPath, text: "Use .roll/backlog.md as the current Workspace authority.\n" },
+  });
+  assert.ok(
+    violations.some((violation) => violation.startsWith("stale-workspace-authority:")),
+    `${carrierPath} must be scanned as a Workspace contract carrier`,
+  );
+}
+
+const routeCarrierViolation = auditMutatedCoreFixture({
+  mutateRoutes: (routes) => {
+    routes.skills["roll-build"].positive.push("Use .roll/backlog.md as the current Workspace authority.");
+  },
+});
+assert.ok(routeCarrierViolation.some((violation) => violation.startsWith("stale-workspace-authority:route-cases/skills.json")));
 
 const wrongMachineDeclaration = auditMutatedCoreFixture({
   skillName: "roll-ws-create",
