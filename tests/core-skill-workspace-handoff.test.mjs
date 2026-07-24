@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -28,4 +29,12 @@ test("core delivery skills expose a complete Workspace execution handoff contrac
     assert.equal(typeof skill.workspaceAllowsAmbientCwd, "boolean", `${family} must declare ambient cwd policy`);
     assert.equal(typeof skill.workspaceAllowsLegacyRollPath, "boolean", `${family} must declare legacy path policy`);
   }
+});
+
+test("machine-only Workspace creation uses an explicit create handoff from arbitrary cwd", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, "route-cases", "skills.json"), "utf8"));
+  assert.deepEqual(
+    manifest.workspaceHandoffCases["roll-ws-create"].find((item) => item.case === "arbitrary_cwd"),
+    { case: "arbitrary_cwd", expected: "use_explicit_create_handoff" },
+  );
 });
