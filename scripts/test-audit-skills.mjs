@@ -352,6 +352,43 @@ for (const [authorityText, violationPrefix] of [
   );
 }
 
+for (const connector of ["although", "while", "whereas"]) {
+  for (const punctuation of [", ", " "]) {
+    for (const [target, violationPrefix] of [
+      ["$PWD", "ambient-pwd-authority:"],
+      ["~/.shared/roll/loop/runs.jsonl", "fixed-loop-runtime-authority:"],
+      ["git -C .roll status", "repository-local-roll-authority:"],
+      [".roll/backlog.md", "stale-workspace-authority:"],
+      ["../.roll", "stale-workspace-authority:"],
+    ]) {
+      const authorityText = `Do not inspect another Workspace${punctuation}${connector} consult ${target} for current authority.`;
+      const violations = auditMutatedCoreFixture({
+        addCarrier: { path: "references/handoff-regression.md", text: `${authorityText}\n` },
+      });
+      assert.ok(
+        violations.some((violation) => violation.startsWith(violationPrefix)),
+        `connector suffix must invalidate the complete prohibition line: ${authorityText}`,
+      );
+    }
+  }
+}
+
+for (const authorityText of [
+  "Never derive authority from the shell cwd, a repository root, or a nearby .roll directory.",
+  "Do not rediscover from cwd or .roll, activate a Workspace, or create one inside this skill.",
+  "Do not derive authority from $PWD.",
+  "Never derive authority from pwd -P.",
+  "Do not derive authority from ~/.shared/roll/loop/runs.jsonl.",
+  "Never derive authority from git -C .roll status.",
+  "Do not derive authority from .roll/backlog.md.",
+  "Never derive authority from ../.roll.",
+]) {
+  const violations = auditMutatedCoreFixture({
+    addCarrier: { path: "references/handoff-regression.md", text: `${authorityText}\n` },
+  });
+  assert.deepEqual(violations, [], `anchored prohibition grammar must allow: ${authorityText}`);
+}
+
 for (const carrierPath of [
   "SKILL.md",
   "references/injected.md",
