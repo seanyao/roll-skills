@@ -14,11 +14,15 @@
     "roll-.clarify": {
       "positive": [
         "the fly-mode build request is vague and needs scope questions",
-        "the user asked for a feature but boundaries are underspecified"
+        "the user asked for a feature but boundaries are underspecified",
+        "Workspace requirement discovery returned a closed workspace_target handoff and the agent must ask whether to select an existing Workspace or start a create preview",
+        "Workspace discovery is incomplete and the closed workspace_target handoff allows only canonical repair actions"
       ],
       "negative": [
         "the user supplied a concrete US-XXX story id",
-        "the user only wants intent restated, not scope questions"
+        "the user only wants intent restated, not scope questions",
+        "silently select the only active Workspace even though it does not match the current requirement",
+        "apply or activate a Workspace after a workspace_target create or select answer"
       ]
     },
     "roll-.dream": {
