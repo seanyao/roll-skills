@@ -71,10 +71,10 @@
         "fix FIX-123 as a narrow bug repair"
       ]
     },
-    "roll-ws-init": {
+    "roll-ws-create": {
       "positive": [
-        "preview and initialize a multi-repository Roll Workspace from versioned bindings",
-        "retry a failed roll workspace init using its repair journal"
+        "preview and create a multi-repository Roll Workspace from versioned bindings",
+        "retry a failed roll workspace create using its repair journal"
       ],
       "negative": [
         "create Story repository worktrees inside an existing Workspace",

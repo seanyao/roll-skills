@@ -1,15 +1,15 @@
 ---
-name: roll-ws-init
-description: Load when an operator wants to preview Workspace paths and repository bindings, initialize a complete Roll Workspace from a versioned config, or retry a failed `roll workspace init` without hand-writing its filesystem layout.
+name: roll-ws-create
+description: Load when an operator wants to preview and create a complete Roll Workspace from a versioned config through the canonical `roll workspace create` surface.
 ---
 
-# Roll Workspace Init
+# Roll Workspace Create
 
-Collect intent, write one `roll.workspace-init/v1` config, and delegate every
+Collect intent, write one `roll.workspace-create/v1` config, and delegate every
 filesystem, registry, cache, and Git mutation to the CLI.
 
-Initialization creates Workspace authorities and repository bindings; it does not activate the Workspace.
-Use `roll workspace issue init` after initialization for Story repository worktrees.
+Creation establishes Workspace authorities and repository bindings; it does not activate the Workspace.
+Use `roll workspace issue init` after creation for Story repository worktrees.
 Use `roll workspace migrate` for a historical repository-local Roll project.
 
 ## Workflow
@@ -20,7 +20,7 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 2. Write the config outside the target Workspace root. Use the closed shape:
 
    ```yaml
-   schema: roll.workspace-init/v1
+   schema: roll.workspace-create/v1
    id: ws-demo
    root: ~/.roll/workspaces/ws-demo
    display_name: Demo Workspace
@@ -38,23 +38,25 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 3. Preview before applying:
 
    ```bash
-   roll workspace init ws-demo --config /absolute/path/workspace-init.yaml --check --json
+   roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --check --json
    ```
 
 4. Inspect every `created|reused|repaired|rejected` decision. Resolve any
    rejected schema, identity, root, remote, or existing-content conflict by
    changing the config or preserving the conflicting operator-owned state.
-5. When creation is requested, apply the exact reviewed config:
+5. Stop after preview unless the owner explicitly authorizes applying that
+   exact Workspace ID and reviewed config. A clarification answer that selects
+   "create new" authorizes preview only. After exact authorization, apply:
 
    ```bash
-   roll workspace init ws-demo --config /absolute/path/workspace-init.yaml --json
+   roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --json
    ```
 
 6. Re-run the same command after an interrupted apply. Let the CLI read its
    repair journal and decide what is safe to repair or preserve.
-7. Report the initialized Workspace ID and root. If the operator also requested
+7. Report the created Workspace ID and root. If the operator also requested
    lifecycle activation, hand that separate action back to `roll workspace
-   activate <id|path>` after initialization has completed; do not fold it into
+   activate <id|path>` after creation has completed; do not fold it into
    this skill's shell blocks.
 
 ## Hard Boundaries
@@ -62,7 +64,7 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 - Never create Workspace directories or files with `mkdir`, `touch`, `cp`,
   shell redirects, or direct filesystem APIs.
 - Never run `git clone`, `git init`, `git worktree`, or edit cache paths for
-  Workspace initialization.
+  Workspace creation.
 - Never edit `$ROLL_HOME/workspaces.json`, lifecycle events, cache identity
   files, locks, or repair journals directly.
 - Never fall back to hand-written layout creation when the CLI rejects or fails.
@@ -73,7 +75,7 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 - Never migrate a repository-local `.roll`; historical conversion belongs to
   `roll workspace migrate --check` plus its reviewed apply transaction.
 - Never activate, pause, or archive a Workspace as an implicit consequence of
-  initialization.
+  creation.
 - Treat `--check` as the only preview contract; it must remain side-effect free.
 
 ## Recovery
@@ -86,8 +88,8 @@ force success.
 ## Gotchas
 
 - A config file is an input contract, not permission to hand-create its target.
-- A successful `--check` is still read-only; run apply only when initialization
-  was requested.
+- A successful `--check` is still read-only; run apply only after the owner
+  authorizes the exact previewed create target.
 - A reusable machine bare cache is not a Workspace product checkout.
-- Multiple Workspaces may be active. Init creates one explicit target and does
+- Multiple Workspaces may be active. Create establishes one explicit target and does
   not select a global current Workspace.
