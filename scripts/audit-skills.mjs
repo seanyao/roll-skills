@@ -208,49 +208,66 @@ function explicitlyRejects(line, matchIndex) {
   );
 }
 
-function lastActionBefore(text, targetIndex, actions) {
-  const prefix = text.slice(0, targetIndex);
-  let last;
-  for (const match of prefix.matchAll(actions)) last = match;
-  return last;
+function normalizedContractSentence(sentence) {
+  return sentence
+    .replace(/[`*_]/gu, "")
+    .replace(/^\s*(?:[-+]\s+|\d+\.\s+)/u, "")
+    .trim()
+    .replace(/\s+/gu, " ")
+    .replace(/[.!?。！？]+$/gu, "")
+    .toLocaleLowerCase("en-US");
 }
 
-function actionIsExplicitlyNegated(text, action) {
-  if (action?.index === undefined) return false;
-  return /(?:never|must\s+(?:not|never)|do(?:es)?\s+not|forbid(?:s|den)?)\s*$/iu.test(
-    text.slice(0, action.index),
-  );
+function sentenceAt(line, targetIndex) {
+  const boundaries = [...line.matchAll(/[.!?。！？]+/gu)];
+  let start = 0;
+  let end = line.length;
+  for (const boundary of boundaries) {
+    if (boundary.index === undefined) continue;
+    if (boundary.index < targetIndex) start = boundary.index + boundary[0].length;
+    else {
+      end = boundary.index + boundary[0].length;
+      break;
+    }
+  }
+  return line.slice(start, end);
 }
 
-function allowedLegacyJournalReference(skillName, clause, initIndex) {
+function allowedLegacyJournalReference(skillName, line, initIndex) {
   if (skillName !== "roll-ws-create") return false;
-  const action = lastActionBefore(
-    clause,
-    initIndex,
-    /\b(?:read|reconcile|run|running|execute|executing|apply|applying|invoke|invoking|launch|launching|inspect|inspecting|offer|advertise|provide|expose)\b/giu,
-  );
-  if (action?.index === undefined || !/^(?:read|reconcile)$/iu.test(action[0])) return false;
-  return /\b(?:read|reconcile)\b[^.;]*\b(?:named|old|historical|legacy)\b[^.;]*\bworkspace[ -]init\b[^.;]*\bjournal\b/iu.test(
-    clause.slice(action.index),
+  const sentence = sentenceAt(line, initIndex);
+  if ([...sentence.matchAll(/\b(?:roll (?:workspace )?init|workspace[ -]init)\b/giu)].length !== 1) return false;
+  return /^(?:(?:read|reconcile)|read and reconcile|reconcile and read) the named (?:old|historical|legacy) workspace-init (?:journal|journal schema|repair journal|repair journal schema)$/u.test(
+    normalizedContractSentence(sentence),
   );
 }
 
-function relativeRollAuthorityIsRejected(line, pathIndex) {
-  const action = lastActionBefore(
-    line,
-    pathIndex,
-    /\b(?:use|read|write|derive|resolve|load|scan|inspect|edit|treat|discover|rediscover|migrate)\b/giu,
-  );
-  return actionIsExplicitlyNegated(line, action);
+function independentClauses(line) {
+  const clauses = [];
+  const separator = /[;!?。；！？]+|\.(?=\s|$)|\b(?:but|then|however|therefore|yet)\b/giu;
+  let start = 0;
+  for (const match of line.matchAll(separator)) {
+    if (match.index === undefined) continue;
+    if (match.index > start) clauses.push({ start, end: match.index, text: line.slice(start, match.index) });
+    start = match.index + match[0].length;
+  }
+  if (start < line.length) clauses.push({ start, end: line.length, text: line.slice(start) });
+  return clauses;
 }
 
-function ambientAuthorityIsRejected(line, pathIndex) {
-  const action = lastActionBefore(
-    line,
-    pathIndex,
-    /\b(?:use|read|write|derive|resolve|load|scan|inspect|edit|treat|run|execute|invoke|reconcile)\b/giu,
-  );
-  return actionIsExplicitlyNegated(line, action);
+function occurrenceClause(line, targetIndex) {
+  return independentClauses(line).find(({ start, end }) => targetIndex >= start && targetIndex < end);
+}
+
+function authorityOccurrenceIsRejected(line, targetIndex) {
+  const clause = occurrenceClause(line, targetIndex);
+  if (clause === undefined) return false;
+  const localIndex = targetIndex - clause.start;
+  const prefix = clause.text.slice(0, localIndex).trim();
+  const suffix = clause.text.slice(localIndex).trim();
+  return /(?:^|\b)(?:never|must\s+(?:not|never)|do(?:es)?\s+not|forbid(?:s|den)?|prohibit(?:s|ed)?)\b/iu.test(prefix) ||
+    /\b(?:is|are)\s+(?:forbidden|prohibited|disallowed)\b/iu.test(suffix) ||
+    /\b(?:instead of|rather than)\s*$/iu.test(prefix);
 }
 
 function staleAuthorityViolations(skillName, contractTexts) {
@@ -262,33 +279,30 @@ function staleAuthorityViolations(skillName, contractTexts) {
         if (stalePath.index === undefined) continue;
         const pathPrefix = line.slice(0, stalePath.index).match(/[^\s"'`()]*$/u)?.[0] ?? "";
         if (pathPrefix.startsWith("/") || pathPrefix.startsWith("~/")) continue;
-        if (!relativeRollAuthorityIsRejected(line, stalePath.index)) {
+        if (!authorityOccurrenceIsRejected(line, stalePath.index)) {
           violations.push(`stale-workspace-authority:${location}`);
           break;
         }
       }
       const ambientPwd = line.match(/\$\{ROLL_MAIN_PROJECT:-\$PWD\}|\$PWD|\bpwd\s+-P\b/u);
-      if (ambientPwd?.index !== undefined && !ambientAuthorityIsRejected(line, ambientPwd.index)) {
+      if (ambientPwd?.index !== undefined && !authorityOccurrenceIsRejected(line, ambientPwd.index)) {
         violations.push(`ambient-pwd-authority:${location}`);
       }
       const fixedLoopRuntime = line.match(/~\/\.shared\/roll\/loop\//u);
-      if (fixedLoopRuntime?.index !== undefined && !ambientAuthorityIsRejected(line, fixedLoopRuntime.index)) {
+      if (fixedLoopRuntime?.index !== undefined && !authorityOccurrenceIsRejected(line, fixedLoopRuntime.index)) {
         violations.push(`fixed-loop-runtime-authority:${location}`);
       }
       const localRollGit = line.match(/git\s+-C\s+`?\.roll(?:\s|`|$)/iu);
-      if (localRollGit?.index !== undefined && !ambientAuthorityIsRejected(line, localRollGit.index)) {
+      if (localRollGit?.index !== undefined && !authorityOccurrenceIsRejected(line, localRollGit.index)) {
         violations.push(`repository-local-roll-authority:${location}`);
       }
       let unsafePublicInit = false;
-      for (const clause of line.split(/[.;]/u)) {
-        for (const publicInit of clause.matchAll(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/giu)) {
-          if (publicInit.index === undefined) continue;
-          if (!allowedLegacyJournalReference(skillName, clause, publicInit.index)) {
-            unsafePublicInit = true;
-            break;
-          }
+      for (const publicInit of line.matchAll(/\broll (?:workspace )?init\b|\bworkspace[ -]init\b/giu)) {
+        if (publicInit.index === undefined) continue;
+        if (!allowedLegacyJournalReference(skillName, line, publicInit.index)) {
+          unsafePublicInit = true;
+          break;
         }
-        if (unsafePublicInit) break;
       }
       if (unsafePublicInit) {
         violations.push(`public-workspace-init:${location}`);
@@ -365,11 +379,21 @@ function validRepositoryBinding(value) {
 
 function validMatchEvidence(value) {
   if (!hasExactKeys(value, ["kind", "value", "hard", "score", "source", "provenance", "detail"])) return false;
-  return ["issue_exact", "requirement_source_exact", "repository_exact", "path_contained", "semantic_supported"].includes(value.kind) &&
-    nonEmptyString(value.value) && typeof value.hard === "boolean" && typeof value.score === "number" &&
-    nonEmptyString(value.source) && [
-      "explicit_user", "cli_argument", "issue_manifest", "cwd_repository", "deterministic_extraction", "semantic_inference",
-    ].includes(value.provenance) && nonEmptyString(value.detail);
+  if (
+    !["issue_exact", "requirement_source_exact", "repository_exact", "path_contained", "semantic_supported"].includes(value.kind) ||
+    !nonEmptyString(value.value) || typeof value.hard !== "boolean" ||
+    typeof value.score !== "number" || !Number.isFinite(value.score) ||
+    !nonEmptyString(value.source) || !nonEmptyString(value.detail)
+  ) return false;
+  const hardProvenance = ["explicit_user", "cli_argument", "issue_manifest", "deterministic_extraction"];
+  const nonSemanticProvenance = [...hardProvenance, "cwd_repository"];
+  if (["issue_exact", "requirement_source_exact"].includes(value.kind)) {
+    return value.hard === true && hardProvenance.includes(value.provenance);
+  }
+  if (["repository_exact", "path_contained"].includes(value.kind)) {
+    return value.hard === false && nonSemanticProvenance.includes(value.provenance);
+  }
+  return value.hard === false && value.provenance === "semantic_inference";
 }
 
 const EXECUTION_AUTHORITY_KEYS = [
@@ -436,7 +460,8 @@ function parseExecutionContext(value) {
     if (
       !["explicit", "environment", "cwd_manifest", "issue_manifest", "requirement_discovery"].includes(parsed.resolution.source) ||
       !Array.isArray(parsed.resolution.evidence) ||
-      !parsed.resolution.evidence.every(validMatchEvidence)
+      !parsed.resolution.evidence.every(validMatchEvidence) ||
+      (parsed.resolution.source === "requirement_discovery" && parsed.resolution.evidence.length === 0)
     ) return { ok: false };
     if (!Array.isArray(parsed.bindings) || !parsed.bindings.every(validRepositoryBinding)) return { ok: false };
     if (!validAuthorities(parsed.authorities)) return { ok: false };
@@ -475,16 +500,20 @@ function sameCreateTuple(left, right) {
     left?.planSha256 === right?.planSha256;
 }
 
-function validCreateTuple(tuple) {
+function validCreateTupleFields(tuple) {
   return typeof tuple?.workspaceId === "string" && tuple.workspaceId.length > 0 &&
     typeof tuple?.configSha256 === "string" && /^[a-f0-9]{64}$/u.test(tuple.configSha256) &&
     typeof tuple?.planSha256 === "string" && /^[a-f0-9]{64}$/u.test(tuple.planSha256);
 }
 
+function validCreateTuple(tuple) {
+  return hasExactKeys(tuple, ["workspaceId", "configSha256", "planSha256"]) && validCreateTupleFields(tuple);
+}
+
 function validCreateAuthorization(value) {
   return hasExactKeys(value, ["schema", "source", "workspaceId", "configSha256", "planSha256"]) &&
     value.schema === "roll.workspace-create-apply-authorization/v1" && value.source === "owner_after_preview" &&
-    validCreateTuple(value);
+    validCreateTupleFields(value);
 }
 
 export function evaluateWorkspaceHandoffCase(
@@ -526,6 +555,9 @@ export function evaluateWorkspaceHandoffCase(
     if (caseName === "explicit_selector") {
       if (!validCreateTuple(input?.preview)) {
         return { decision: "invalid_create_preview", proofs: [], failures: ["invalid_preview_tuple"] };
+      }
+      if (!validCreateTuple(input?.retryPreview)) {
+        return { decision: "invalid_create_preview", proofs: ["exact_preview_tuple"], failures: ["invalid_retry_preview_tuple"] };
       }
       if (input.naturalLanguageIntentOnly === true || input.authorization == null) {
         return { decision: "preview_only", proofs: ["exact_preview_tuple", "natural_language_apply_rejected"], failures: ["apply_authorization_missing"] };

@@ -26,7 +26,8 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 - When the create config declares multiple repositories, validate all config bindings in the preview. Creation does not select one Issue repository and does not reuse an Issue execution contract.
 - On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or apply creation from the clarification answer.
 - Retry and continuation keep the same create identity and preview digests through authorization. Any config, identity, or plan change requires a fresh preview and authorization.
-- Legacy recovery may read and reconcile the named old `workspace-init` journal schema through the CLI only; it never executes that historical command or treats repository-local layout as authority.
+- Read and reconcile the named old `workspace-init` journal schema.
+- Use only the CLI recovery path; never execute that historical command or treat repository-local layout as authority.
 
 ## Workflow
 
@@ -85,9 +86,9 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
    roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --authorization /absolute/path/workspace-create-authorization.json --json
    ```
 
-8. After an interrupted apply, run `--check --json` again. Let the CLI read and
-   reconcile the named old `workspace-init` journal schema and the current
-   `workspace-create` journal. If either digest
+8. After an interrupted apply, run `--check --json` again.
+   Read and reconcile the named old `workspace-init` journal schema.
+   Let the CLI reconcile the current `workspace-create` journal. If either digest
    changed, discard the old authorization and obtain owner approval for the new
    exact preview before retrying; never edit or delete a journal directly.
 9. Report the created Workspace ID and root. If the operator also requested
