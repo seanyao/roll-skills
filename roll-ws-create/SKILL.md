@@ -41,20 +41,39 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
    roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --check --json
    ```
 
-4. Inspect every `created|reused|repaired|rejected` decision. Resolve any
-   rejected schema, identity, root, remote, or existing-content conflict by
-   changing the config or preserving the conflicting operator-owned state.
-5. Stop after preview unless the owner explicitly authorizes applying that
-   exact Workspace ID and reviewed config. A clarification answer that selects
-   "create new" authorizes preview only. After exact authorization, apply:
+4. Inspect every `created|reused|repaired|rejected` decision and record the
+   returned `workspaceId`, `configSha256`, and `planSha256`. Resolve any rejected
+   schema, identity, root, remote, journal-recovery, or existing-content conflict
+   by changing the config or preserving the conflicting operator-owned state.
+5. Stop after preview. A `$roll-.clarify` answer with action `create_new` is
+   preview only: it never authorizes apply. Ask the owner to approve the exact
+   `workspaceId` + `configSha256` + `planSha256` tuple shown by the current
+   preview; broad statements such as "create a Workspace" are not sufficient.
+6. Only after that exact approval, write an authorization file outside the
+   target Workspace root using the closed JSON contract and the unchanged
+   preview values:
 
-   ```bash
-   roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --json
+   ```json
+   {
+     "schema": "roll.workspace-create-apply-authorization/v1",
+     "workspaceId": "ws-demo",
+     "configSha256": "<64-hex digest from preview>",
+     "planSha256": "<64-hex digest from preview>",
+     "source": "owner_after_preview"
+   }
    ```
 
-6. Re-run the same command after an interrupted apply. Let the CLI read its
-   repair journal and decide what is safe to repair or preserve.
-7. Report the created Workspace ID and root. If the operator also requested
+7. Apply with that file; never use a bare agent apply command:
+
+   ```bash
+   roll workspace create ws-demo --config /absolute/path/workspace-create.yaml --authorization /absolute/path/workspace-create-authorization.json --json
+   ```
+
+8. After an interrupted apply, run `--check --json` again. Let the CLI reconcile
+   old `workspace-init` and current `workspace-create` journals. If either digest
+   changed, discard the old authorization and obtain owner approval for the new
+   exact preview before retrying; never edit or delete a journal directly.
+9. Report the created Workspace ID and root. If the operator also requested
    lifecycle activation, hand that separate action back to `roll workspace
    activate <id|path>` after creation has completed; do not fold it into
    this skill's shell blocks.
@@ -77,6 +96,11 @@ Use `roll workspace migrate` for a historical repository-local Roll project.
 - Never activate, pause, or archive a Workspace as an implicit consequence of
   creation.
 - Treat `--check` as the only preview contract; it must remain side-effect free.
+- Never apply from an agent or skill without `--authorization <file>` whose
+  `source` is `owner_after_preview` and whose three preview identity/digest
+  fields match the current CLI plan exactly.
+- Never convert a `create_new` clarification answer into an authorization file;
+  it permits only config collection and preview.
 
 ## Recovery
 
@@ -89,7 +113,10 @@ force success.
 
 - A config file is an input contract, not permission to hand-create its target.
 - A successful `--check` is still read-only; run apply only after the owner
-  authorizes the exact previewed create target.
+  authorizes the exact previewed Workspace ID, config digest, and plan digest.
+- Any config, filesystem, cache, registry, or journal change can change the plan
+  digest. A stale authorization must lead back to preview, never to a broader
+  interpretation of earlier owner intent.
 - A reusable machine bare cache is not a Workspace product checkout.
 - Multiple Workspaces may be active. Create establishes one explicit target and does
   not select a global current Workspace.
