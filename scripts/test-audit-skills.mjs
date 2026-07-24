@@ -136,9 +136,70 @@ for (const [name, mutateRoutes, expectedViolation] of [
     },
     "workspace-handoff-case-execution-failed:arbitrary_cwd:invalid_prompt_or_environment_context",
   ],
+  [
+    "requirement discovery without evidence",
+    (routes) => {
+      routes.workspaceExecutionContextFixtures.issue.resolution = {
+        source: "requirement_discovery",
+        evidence: [],
+      };
+    },
+    "workspace-handoff-case-execution-failed:arbitrary_cwd:invalid_prompt_or_environment_context",
+  ],
 ]) {
   const violations = auditMutatedCoreFixture({ mutateRoutes });
   assert.ok(violations.includes(expectedViolation), `${name} input mutation must fail closed`);
+}
+
+for (const source of ["explicit", "environment", "cwd_manifest"]) {
+  const violations = auditMutatedCoreFixture({
+    skillName: "roll-design",
+    mutateRoutes: (routes) => {
+      routes.workspaceExecutionContextFixtures.workspace.resolution = { source, evidence: [] };
+    },
+  });
+  assert.equal(
+    violations.some((violation) => violation.includes("invalid_prompt_or_environment_context")),
+    false,
+    `${source} resolution may carry an empty evidence array`,
+  );
+}
+
+for (const [name, evidence] of [
+  [
+    "semantic evidence marked hard",
+    { kind: "semantic_supported", value: "roll", hard: true, score: 10, source: "semantic-index:roll", provenance: "semantic_inference", detail: "Semantic term matched roll" },
+  ],
+  [
+    "semantic evidence with non-semantic provenance",
+    { kind: "semantic_supported", value: "roll", hard: false, score: 10, source: "semantic-index:roll", provenance: "explicit_user", detail: "Semantic term matched roll" },
+  ],
+  [
+    "issue exact evidence inferred semantically",
+    { kind: "issue_exact", value: "US-WS-037", hard: true, score: 100, source: "issue:US-WS-037", provenance: "semantic_inference", detail: "Issue matched" },
+  ],
+  [
+    "requirement exact evidence inferred semantically",
+    { kind: "requirement_source_exact", value: "jira:APE-234", hard: true, score: 90, source: "requirement:jira/APE-234", provenance: "semantic_inference", detail: "Requirement matched" },
+  ],
+  [
+    "repository exact evidence inferred semantically",
+    { kind: "repository_exact", value: "repo-product", hard: false, score: 30, source: "repository:repo-product", provenance: "semantic_inference", detail: "Repository matched" },
+  ],
+  [
+    "path evidence inferred semantically",
+    { kind: "path_contained", value: "/workspace/roll", hard: false, score: 20, source: "workspace-root:/workspace/roll", provenance: "semantic_inference", detail: "Path matched" },
+  ],
+]) {
+  const violations = auditMutatedCoreFixture({
+    mutateRoutes: (routes) => {
+      routes.workspaceExecutionContextFixtures.issue.resolution.evidence = [evidence];
+    },
+  });
+  assert.ok(
+    violations.includes("workspace-handoff-case-execution-failed:arbitrary_cwd:invalid_prompt_or_environment_context"),
+    `${name} must fail the product matcher compatibility matrix`,
+  );
 }
 
 for (const [name, mutateInput, expectedDecision] of [
@@ -146,6 +207,8 @@ for (const [name, mutateInput, expectedDecision] of [
   ["natural-language bypass", (input) => { input.authorization = null; input.naturalLanguageIntentOnly = true; }, "preview_only"],
   ["retry tuple drift", (input) => { input.retryPreview.configSha256 = "c".repeat(64); }, "fresh_preview_required"],
   ["authorization extra field", (input) => { input.authorization.unexpected = true; }, "invalid_create_authorization"],
+  ["preview extra field", (input) => { input.preview.unexpected = true; }, "invalid_create_preview"],
+  ["retry preview extra field", (input) => { input.retryPreview.unexpected = true; }, "invalid_create_preview"],
 ]) {
   const violations = auditMutatedCoreFixture({
     skillName: "roll-ws-create",
@@ -205,6 +268,21 @@ const allowedCreateJournal = auditMutatedCoreFixture({
 assert.deepEqual(allowedCreateJournal, []);
 
 for (const legacyText of [
+  "Read the named legacy workspace-init journal, then start workspace-init.",
+  "Read the named legacy workspace-init journal, then trigger workspace-init.",
+  "Read the named legacy workspace-init journal and execute it.",
+]) {
+  const violations = auditMutatedCoreFixture({
+    skillName: "roll-ws-create",
+    addCarrier: { path: "references/handoff-regression.md", text: `${legacyText}\n` },
+  });
+  assert.ok(
+    violations.some((violation) => violation.startsWith("public-workspace-init:")),
+    `legacy journal allowlist must reject a trailing action: ${legacyText}`,
+  );
+}
+
+for (const legacyText of [
   "Running workspace-init is forbidden.",
   "Launch workspace-init now.",
   "Do not execute workspace-init.",
@@ -252,6 +330,25 @@ for (const authorityText of [
   assert.ok(
     violations.some((violation) => violation.startsWith("stale-workspace-authority:")),
     `cwd-relative authority must fail: ${authorityText}`,
+  );
+}
+
+for (const [authorityText, violationPrefix] of [
+  ["Do not inspect another Workspace, but consult $PWD for current authority.", "ambient-pwd-authority:"],
+  ["Do not inspect another Workspace, then check pwd -P for current authority.", "ambient-pwd-authority:"],
+  ["Never read another runtime, but consult ~/.shared/roll/loop/runs.jsonl for runtime truth.", "fixed-loop-runtime-authority:"],
+  ["Never read another runtime, then check ~/.shared/roll/loop/runs.jsonl for runtime truth.", "fixed-loop-runtime-authority:"],
+  ["Do not inspect another repository, but consult git -C .roll status.", "repository-local-roll-authority:"],
+  ["Do not inspect another repository, then check git -C .roll status.", "repository-local-roll-authority:"],
+  ["Do not inspect another Workspace, but consult .roll/backlog.md as the current Workspace authority.", "stale-workspace-authority:"],
+  ["Do not inspect another Workspace, then check ../.roll as the current Workspace authority.", "stale-workspace-authority:"],
+]) {
+  const violations = auditMutatedCoreFixture({
+    addCarrier: { path: "references/handoff-regression.md", text: `${authorityText}\n` },
+  });
+  assert.ok(
+    violations.some((violation) => violation.startsWith(violationPrefix)),
+    `negation must be local to the authority occurrence clause: ${authorityText}`,
   );
 }
 
