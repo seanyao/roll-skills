@@ -21,6 +21,22 @@ const WORKSPACE_HANDOFF_TAXONOMY = {
   legacy_boundary: "legacy_migration_only",
 };
 
+const WORKSPACE_REQUIREMENT_FAILURE_CODES = new Set([
+  "requirement_match_required",
+  "ambiguous_requirement_match",
+  "requirement_workspace_conflict",
+  "workspace_discovery_incomplete",
+]);
+
+const REQUIRED_AUTHORITY_CATEGORIES = {
+  "roll-design": ["backlog", "design", "evidence", "features", "runtime"],
+  "roll-build": ["backlog", "design", "evidence", "features", "policy", "runtime"],
+  "roll-fix": ["backlog", "design", "evidence", "features", "policy", "runtime"],
+  "roll-loop": ["backlog", "design", "events", "evidence", "features", "locks", "policy", "runtime"],
+  "roll-prime": ["backlog", "design", "events", "evidence", "features", "policy", "runtime"],
+  "roll-ws-create": [],
+};
+
 function expectedHandoffOutcome(skillName, taxonomy) {
   if (skillName === "roll-ws-create") {
     return {
@@ -162,8 +178,27 @@ function extractHandoffSection(body) {
 
 function collectContractText(skillDir) {
   return walkFiles(skillDir)
-    .filter((file) => /\.(?:md|ya?ml|json|txt)$/u.test(file))
-    .map((file) => ({ file, text: readText(file) }));
+    .map((file) => {
+      const content = fs.readFileSync(file);
+      return {
+        file,
+        relative: toPosix(path.relative(skillDir, file)),
+        text: content.includes(0) ? "" : content.toString("utf8"),
+      };
+    });
+}
+
+function routeCaseContractText(skillName, routes) {
+  return {
+    file: "route-cases/skills.json",
+    relative: "route-cases/skills.json",
+    text: JSON.stringify({
+      skillOperations: routes.skillOperations?.find((entry) => entry.id === skillName) ?? null,
+      workspaceContextPolicies: (routes.workspaceContextPolicies ?? []).filter((policy) => policy.id === skillName),
+      workspaceHandoffCases: routes.workspaceHandoffCases?.[skillName] ?? null,
+      routes: routes.skills?.[skillName] ?? null,
+    }, null, 2),
+  };
 }
 
 function explicitlyRejects(line, matchIndex) {
@@ -180,10 +215,9 @@ function allowedCreateJournalReference(skillName, line) {
     /(?:named|old|historical|legacy)[^.\n]*workspace[ -]init[^.\n]*journal/iu.test(line);
 }
 
-function staleAuthorityViolations(skillName, skillDir) {
+function staleAuthorityViolations(skillName, contractTexts) {
   const violations = [];
-  for (const { file, text } of collectContractText(skillDir)) {
-    const relative = toPosix(path.relative(skillDir, file));
+  for (const { relative, text } of contractTexts) {
     for (const [offset, line] of text.split(/\r?\n/u).entries()) {
       const location = `${relative}:${offset + 1}`;
       const stalePath = line.match(/\.roll\/(?:backlog\.md|features\/|design\/|domain\/|loop\/|prime\.local\.md|agent-routes\.yaml|agents\.yaml|last-test-pass)/u);
@@ -219,7 +253,305 @@ function staleAuthorityViolations(skillName, skillDir) {
   return violations;
 }
 
-export function parseSkillFile(file) {
+function authorityCategories(contractTexts) {
+  const categories = new Set();
+  for (const { text } of contractTexts) {
+    for (const match of text.matchAll(/context\.authorities\.([A-Za-z][A-Za-z0-9_]*)/gu)) {
+      categories.add(match[1]);
+    }
+  }
+  return [...categories].sort();
+}
+
+function workspaceCreateContractChecks(section) {
+  return {
+    exactPreviewTuple: /--check[\s\S]*workspaceId[\s\S]*configSha256[\s\S]*planSha256/iu.test(section),
+    authorizationDigestMismatchFailsClosed:
+      /(?:config|identity|plan)[^\n]*(?:change|changed)[^\n]*(?:fresh preview|discard[^\n]*authorization)/iu.test(section) ||
+      /digest[^\n]*changed[\s\S]*discard[^\n]*authorization[\s\S]*new[^\n]*exact preview/iu.test(section),
+    naturalLanguageCannotAuthorizeApply:
+      /natural-language[^\n]*create_new[^\n]*preview only/iu.test(section) &&
+      /(?:broad statements|earlier owner intent)[^\n]*(?:not sufficient|never)/iu.test(section),
+    retryPreservesTupleOrRequiresFreshAuthorization:
+      /Retry and continuation[^\n]*same create identity[^\n]*preview digests[\s\S]*fresh preview and authorization/iu.test(section),
+  };
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalJson(value[key])]));
+  }
+  return value;
+}
+
+function parseExecutionContext(value) {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : structuredClone(value);
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      parsed.schema !== "roll.workspace-execution-context/v1" ||
+      typeof parsed.workspaceId !== "string" ||
+      parsed.workspaceId.length === 0 ||
+      typeof parsed.scope !== "string" ||
+      parsed.scope.length === 0
+    ) {
+      return { ok: false };
+    }
+    return { ok: true, value: parsed };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function validateContextPair(input, expectedScope) {
+  if (input?.promptContext == null || input?.environmentContext == null) {
+    return { decision: "missing_execution_context", proofs: [], failures: ["missing_prompt_or_environment_context"] };
+  }
+  const prompt = parseExecutionContext(input.promptContext);
+  const environment = parseExecutionContext(input.environmentContext);
+  if (!prompt.ok || !environment.ok) {
+    return { decision: "invalid_workspace_context", proofs: [], failures: ["invalid_prompt_or_environment_context"] };
+  }
+  if (JSON.stringify(canonicalJson(prompt.value)) !== JSON.stringify(canonicalJson(environment.value))) {
+    return { decision: "workspace_context_conflict", proofs: [], failures: ["prompt_environment_context_conflict"] };
+  }
+  if (expectedScope !== undefined && prompt.value.scope !== expectedScope) {
+    return { decision: "workspace_context_scope_mismatch", proofs: ["prompt_env_semantic_identity"], failures: ["context_scope_policy_mismatch"] };
+  }
+  return { proofs: ["prompt_env_semantic_identity"], failures: [], contextValue: prompt.value };
+}
+
+function sameCreateTuple(left, right) {
+  return left?.workspaceId === right?.workspaceId &&
+    left?.configSha256 === right?.configSha256 &&
+    left?.planSha256 === right?.planSha256;
+}
+
+function validCreateTuple(tuple) {
+  return typeof tuple?.workspaceId === "string" && tuple.workspaceId.length > 0 &&
+    typeof tuple?.configSha256 === "string" && /^[a-f0-9]{64}$/u.test(tuple.configSha256) &&
+    typeof tuple?.planSha256 === "string" && /^[a-f0-9]{64}$/u.test(tuple.planSha256);
+}
+
+export function evaluateWorkspaceHandoffCase(
+  skillName,
+  caseName,
+  input,
+  { expectedScope, expectedAuthorityCategories } = {},
+) {
+  const machineCreate = skillName === "roll-ws-create";
+  if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skillName)) {
+    return { decision: "unknown_skill", proofs: [], failures: ["unknown_skill"] };
+  }
+
+  if (machineCreate) {
+    const hasPromptContext = input?.promptContext != null;
+    const hasEnvironmentContext = input?.environmentContext != null;
+    if (hasPromptContext !== hasEnvironmentContext) {
+      return { decision: "missing_execution_context", proofs: [], failures: ["partial_optional_context_pair"] };
+    }
+    if (hasPromptContext && hasEnvironmentContext) {
+      const optionalContext = validateContextPair(input);
+      if (optionalContext.decision !== undefined) return optionalContext;
+    }
+
+    if (caseName === "arbitrary_cwd") {
+      if (typeof input?.cwd !== "string" || typeof input?.createConfig !== "string" || input.previewRequested !== true) {
+        return { decision: "invalid_create_preview", proofs: [], failures: ["explicit_create_preview_missing"] };
+      }
+      if (input.rediscoveryAttempted === true) {
+        return { decision: "workspace_rediscovery_forbidden", proofs: ["explicit_create_preview"], failures: ["rediscovery_attempted"] };
+      }
+      return {
+        decision: "use_explicit_create_preview",
+        proofs: ["explicit_create_preview", "no_rediscovery"],
+        failures: [],
+      };
+    }
+
+    if (caseName === "explicit_selector") {
+      if (!validCreateTuple(input?.preview)) {
+        return { decision: "invalid_create_preview", proofs: [], failures: ["invalid_preview_tuple"] };
+      }
+      if (input.naturalLanguageIntentOnly === true || input.authorization == null) {
+        return { decision: "preview_only", proofs: ["exact_preview_tuple", "natural_language_apply_rejected"], failures: ["apply_authorization_missing"] };
+      }
+      if (
+        input.authorization.schema !== "roll.workspace-create-apply-authorization/v1" ||
+        input.authorization.source !== "owner_after_preview"
+      ) {
+        return { decision: "invalid_create_authorization", proofs: ["exact_preview_tuple"], failures: ["invalid_authorization_contract"] };
+      }
+      if (!sameCreateTuple(input.preview, input.authorization) || !sameCreateTuple(input.preview, input.retryPreview)) {
+        return { decision: "fresh_preview_required", proofs: ["exact_preview_tuple", "digest_mismatch_fail_closed"], failures: ["preview_authorization_or_retry_tuple_changed"] };
+      }
+      return {
+        decision: "use_explicit_create_identity",
+        proofs: ["exact_preview_tuple", "exact_authorization_tuple", "natural_language_apply_rejected", "retry_tuple_continuity"],
+        failures: [],
+      };
+    }
+
+    if (caseName === "requirement_mismatch") {
+      if (!WORKSPACE_REQUIREMENT_FAILURE_CODES.has(input?.resolutionCode)) {
+        return { decision: "invalid_requirement_failure", proofs: [], failures: ["unknown_requirement_failure"] };
+      }
+      if (input.rediscoveryAttempted === true) {
+        return { decision: "workspace_rediscovery_forbidden", proofs: ["requirement_failure_route"], failures: ["rediscovery_attempted"] };
+      }
+      if (input.applyAttempted === true) {
+        return { decision: "preview_only", proofs: ["requirement_failure_route"], failures: ["clarification_apply_forbidden"] };
+      }
+      return {
+        decision: "stop_and_route_workspace_target",
+        proofs: ["requirement_failure_route", "no_rediscovery", "no_apply_from_clarification"],
+        failures: [],
+      };
+    }
+
+    if (caseName === "multi_repo") {
+      const bindings = Array.isArray(input?.repositoryBindings) ? [...input.repositoryBindings].sort() : [];
+      const validated = Array.isArray(input?.validatedBindings) ? [...input.validatedBindings].sort() : [];
+      if (bindings.length === 0 || JSON.stringify(bindings) !== JSON.stringify(validated)) {
+        return { decision: "create_binding_validation_failed", proofs: [], failures: ["not_all_create_bindings_validated"] };
+      }
+      return {
+        decision: "validate_all_create_config_bindings",
+        proofs: ["all_create_bindings_validated"],
+        failures: [],
+      };
+    }
+
+    if (caseName === "legacy_boundary") {
+      if (input?.legacyJournal !== "legacy_create_journal" || input.reconcileOnly !== true || input.legacyCommandExecuted === true) {
+        return { decision: "legacy_execution_forbidden", proofs: [], failures: ["legacy_boundary_breached"] };
+      }
+      return {
+        decision: "reconcile_named_legacy_journals_only",
+        proofs: ["legacy_journal_read_only", "legacy_command_not_executed"],
+        failures: [],
+      };
+    }
+  }
+
+  const context = validateContextPair(input, expectedScope);
+  if (context.decision !== undefined) return context;
+
+  if (caseName === "arbitrary_cwd") {
+    if (input.authoritySource !== "handoff") {
+      return { decision: "ambient_authority_forbidden", proofs: context.proofs, failures: ["authority_not_from_handoff"] };
+    }
+    if (Array.isArray(expectedAuthorityCategories)) {
+      const actual = Array.isArray(input.authorityCategories) ? [...new Set(input.authorityCategories)].sort() : [];
+      if (JSON.stringify(actual) !== JSON.stringify(expectedAuthorityCategories)) {
+        return { decision: "authority_contract_incomplete", proofs: [...context.proofs, "handoff_authority"], failures: ["authority_categories_mismatch"] };
+      }
+    }
+    if (input.rediscoveryAttempted === true) {
+      return { decision: "workspace_rediscovery_forbidden", proofs: [...context.proofs, "handoff_authority"], failures: ["rediscovery_attempted"] };
+    }
+    return {
+      decision: "use_handoff_authorities",
+      proofs: [...context.proofs, "handoff_authority", "arbitrary_cwd_ignored", "no_rediscovery"],
+      failures: [],
+    };
+  }
+
+  if (caseName === "explicit_selector") {
+    if (
+      input.explicitWorkspaceId !== input.resolvedWorkspaceId ||
+      context.contextValue.workspaceId !== input.resolvedWorkspaceId ||
+      context.contextValue.storyId !== input.storyId
+    ) {
+      return { decision: "workspace_context_conflict", proofs: context.proofs, failures: ["explicit_workspace_mismatch"] };
+    }
+    if (input.retryWorkspaceId !== input.resolvedWorkspaceId || input.retryStoryId !== input.storyId) {
+      return { decision: "retry_identity_conflict", proofs: [...context.proofs, "explicit_workspace_identity"], failures: ["retry_identity_changed"] };
+    }
+    return {
+      decision: "use_verified_explicit_identity",
+      proofs: [...context.proofs, "explicit_workspace_identity", "retry_identity_continuity"],
+      failures: [],
+    };
+  }
+
+  if (caseName === "requirement_mismatch") {
+    if (!WORKSPACE_REQUIREMENT_FAILURE_CODES.has(input.resolutionCode)) {
+      return { decision: "invalid_requirement_failure", proofs: context.proofs, failures: ["unknown_requirement_failure"] };
+    }
+    if (input.rediscoveryAttempted === true) {
+      return { decision: "workspace_rediscovery_forbidden", proofs: [...context.proofs, "requirement_failure_route"], failures: ["rediscovery_attempted"] };
+    }
+    return {
+      decision: "stop_and_route_workspace_target",
+      proofs: [...context.proofs, "requirement_failure_route", "no_rediscovery"],
+      failures: [],
+    };
+  }
+
+  if (caseName === "multi_repo") {
+    if (!Number.isInteger(input.repositoryCount) || input.repositoryCount < 1) {
+      return { decision: "missing_execution_context", proofs: context.proofs, failures: ["repository_execution_map_missing"] };
+    }
+    if (input.repositoryCount > 1 && (input.repositorySelector == null || input.repositorySelector === "")) {
+      return {
+        decision: "stop_without_repository_selector",
+        proofs: [...context.proofs, "multi_repo_fail_closed"],
+        failures: [],
+      };
+    }
+    return {
+      decision: "use_selected_repository",
+      proofs: [...context.proofs, "explicit_repository_selector"],
+      failures: [],
+    };
+  }
+
+  if (caseName === "legacy_boundary") {
+    if (input.scope !== "legacy_migration_only" || input.legacyReadOnly !== true || input.legacyCommandExecuted === true) {
+      return { decision: "legacy_execution_forbidden", proofs: context.proofs, failures: ["legacy_boundary_breached"] };
+    }
+    return {
+      decision: "legacy_migration_only",
+      proofs: [...context.proofs, "legacy_read_only", "legacy_command_not_executed"],
+      failures: [],
+    };
+  }
+
+  return { decision: "unknown_case", proofs: context.proofs, failures: ["unknown_case"] };
+}
+
+function workspaceHandoffCaseResultsFor(skill, routes) {
+  if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skill.name)) return [];
+  const cases = Array.isArray(routes.workspaceHandoffCases?.[skill.name])
+    ? routes.workspaceHandoffCases[skill.name]
+    : [];
+  const policyScopes = [...new Set((routes.workspaceContextPolicies ?? [])
+    .filter((policy) => policy.id === skill.name)
+    .map((policy) => policy.scope))];
+  const expectedScope = policyScopes.length === 1 ? policyScopes[0] : undefined;
+
+  return cases.map((item) => {
+    const expected = expectedHandoffOutcome(skill.name, item.case);
+    const evaluation = evaluateWorkspaceHandoffCase(skill.name, item.case, item.input, {
+      expectedScope,
+      expectedAuthorityCategories: REQUIRED_AUTHORITY_CATEGORIES[skill.name],
+    });
+    return {
+      case: item.case,
+      input: structuredClone(item.input ?? null),
+      expected,
+      actual: evaluation.decision,
+      proofs: evaluation.proofs,
+      failures: evaluation.failures,
+      passed: item.expected === expected && evaluation.decision === expected && evaluation.failures.length === 0,
+    };
+  });
+}
+
+export function parseSkillFile(file, contractTexts = collectContractText(path.dirname(file))) {
   const text = readText(file);
   const { fields, body, ok } = parseFrontmatter(text);
   const skillDir = path.dirname(file);
@@ -252,6 +584,7 @@ export function parseSkillFile(file) {
     workspaceAllowsAmbientCwd: frontmatterBoolean(fields["workspace-allows-ambient-cwd"]),
     workspaceAllowsLegacyRollPath: frontmatterBoolean(fields["workspace-allows-legacy-roll-path"]),
     workspaceHandoffSection: extractHandoffSection(body),
+    scannedFiles: contractTexts.map(({ relative }) => relative).sort(),
   };
 }
 
@@ -282,7 +615,7 @@ function routeCoverageFor(skillName, routes) {
   };
 }
 
-function workspaceHandoffViolationsFor(skill, routes) {
+function workspaceHandoffViolationsFor(skill, routes, contractTexts, caseResults, authorityCategoryList, createChecks) {
   if (!CORE_WORKSPACE_HANDOFF_SKILLS.includes(skill.name)) return [];
 
   const violations = [];
@@ -310,6 +643,12 @@ function workspaceHandoffViolationsFor(skill, routes) {
   }
   if (legacyPolicies.length !== 1 || skill.workspaceAllowsLegacyRollPath !== legacyPolicies[0]) {
     violations.push("workspace-handoff-policy-mismatch:allowsLegacyRollPath");
+  }
+
+  for (const category of REQUIRED_AUTHORITY_CATEGORIES[skill.name] ?? []) {
+    if (!authorityCategoryList.includes(category)) {
+      violations.push(`workspace-authority-category-missing:${category}`);
+    }
   }
 
   const section = skill.workspaceHandoffSection;
@@ -348,6 +687,12 @@ function workspaceHandoffViolationsFor(skill, routes) {
     }
   }
 
+  if (machineCreate) {
+    for (const [check, passed] of Object.entries(createChecks)) {
+      if (!passed) violations.push(`workspace-create-contract-missing:${check}`);
+    }
+  }
+
   const cases = routes.workspaceHandoffCases?.[skill.name];
   if (!Array.isArray(cases)) {
     violations.push("workspace-handoff-cases-missing");
@@ -370,7 +715,16 @@ function workspaceHandoffViolationsFor(skill, routes) {
     }
   }
 
-  violations.push(...staleAuthorityViolations(skill.name, path.dirname(skill.file)));
+  for (const result of caseResults) {
+    for (const failure of result.failures) {
+      violations.push(`workspace-handoff-case-execution-failed:${result.case}:${failure}`);
+    }
+    if (result.actual !== result.expected) {
+      violations.push(`workspace-handoff-case-decision-invalid:${result.case}:${result.actual}`);
+    }
+  }
+
+  violations.push(...staleAuthorityViolations(skill.name, contractTexts));
   return violations;
 }
 
@@ -392,11 +746,30 @@ function violationsFor(skill, routeCoverage) {
 export function auditSkills({ skillsDir, routeFile }) {
   const routes = loadRouteCases(routeFile);
   const skills = findSkillFiles(skillsDir).map((file) => {
-    const skill = parseSkillFile(file);
+    const skillContractTexts = collectContractText(path.dirname(file));
+    const skill = parseSkillFile(file, skillContractTexts);
+    const routeContractText = routeCaseContractText(skill.name, routes);
+    const contractTexts = [...skillContractTexts, routeContractText];
+    const workspaceAuthorityCategories = authorityCategories(contractTexts);
+    const createChecks = skill.name === "roll-ws-create"
+      ? workspaceCreateContractChecks(skill.workspaceHandoffSection)
+      : {};
+    const workspaceHandoffCaseResults = workspaceHandoffCaseResultsFor(skill, routes);
     const routeCoverage = routeCoverageFor(skill.name, routes);
-    const workspaceHandoffViolations = workspaceHandoffViolationsFor(skill, routes);
+    const workspaceHandoffViolations = workspaceHandoffViolationsFor(
+      skill,
+      routes,
+      contractTexts,
+      workspaceHandoffCaseResults,
+      workspaceAuthorityCategories,
+      createChecks,
+    );
     return {
       ...skill,
+      scannedFiles: [...skill.scannedFiles, "route-cases/skills.json"].sort(),
+      workspaceAuthorityCategories,
+      workspaceCreateContractChecks: createChecks,
+      workspaceHandoffCaseResults,
       routeCoverage: {
         positiveCount: routeCoverage.positive.length,
         negativeCount: routeCoverage.negative.length,
@@ -406,6 +779,11 @@ export function auditSkills({ skillsDir, routeFile }) {
       violations: [...violationsFor(skill, routeCoverage), ...workspaceHandoffViolations],
     };
   });
+
+  const scannedFiles = [...new Set(skills.flatMap((skill) =>
+    skill.scannedFiles.map((file) => file === "route-cases/skills.json" ? file : `${skill.name}/${file}`),
+  ))].sort();
+  const handoffCaseResults = skills.flatMap((skill) => skill.workspaceHandoffCaseResults);
 
   const summary = {
     skills: skills.length,
@@ -418,9 +796,12 @@ export function auditSkills({ skillsDir, routeFile }) {
       (count, skill) => count + skill.workspaceHandoffViolations.length,
       0,
     ),
+    workspaceHandoffCases: handoffCaseResults.length,
+    workspaceHandoffCaseFailures: handoffCaseResults.filter((result) => !result.passed).length,
+    scannedFiles: scannedFiles.length,
   };
 
-  return { summary, skills };
+  return { summary, scannedFiles, skills };
 }
 
 function printHuman(report) {
@@ -430,6 +811,9 @@ function printHuman(report) {
   console.log(`Skills over 250 lines: ${report.summary.over250}`);
   console.log(`Skills with auxiliary files: ${report.summary.withAuxiliaryFiles}`);
   console.log(`Workspace handoff violations: ${report.summary.workspaceHandoffViolations}`);
+  console.log(`Workspace handoff cases: ${report.summary.workspaceHandoffCases - report.summary.workspaceHandoffCaseFailures}/${report.summary.workspaceHandoffCases}`);
+  console.log(`Scanned files: ${report.summary.scannedFiles}`);
+  for (const file of report.scannedFiles) console.log(`  scanned: ${file}`);
   console.log(`Violations: ${report.summary.violations}`);
 
   for (const skill of report.skills) {

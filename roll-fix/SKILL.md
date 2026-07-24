@@ -58,7 +58,7 @@ modes.
 ## Workspace Execution Handoff
 
 - Before acting, parse the host-provided `Workspace Execution Context` prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT` as `roll.workspace-execution-context/v1`; they must be semantically identical. Missing either copy, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** before reading or writing.
-- This skill requires `issue_required`. Read and write backlog, features, design, evidence, and runtime only through `context.authorities`; never derive authority from the shell cwd, a repository root, or a nearby `.roll` directory.
+- This skill requires `issue_required`. Resolve planning, policy, and proof paths only from `context.authorities.backlog`, `context.authorities.features`, `context.authorities.design`, `context.authorities.evidence`, `context.authorities.runtime`, and `context.authorities.policy`; never derive authority from the shell cwd, a repository root, or a nearby `.roll` directory.
 - Run reproduction, test, Git, and delivery commands only in a repository from `context.issue.execution.repositories`. If more than one repository exists and the handoff names no repository ID or alias, STOP with `missing_execution_context`; never choose the first entry.
 - On `requirement_match_required`, `ambiguous_requirement_match`, `requirement_workspace_conflict`, or `workspace_discovery_incomplete`, return the structured failure to `roll-.clarify workspace_target` and stop. Do not rediscover from cwd or `.roll`, activate a Workspace, or create one inside this skill.
 - Retry and continuation keep the same Workspace and Issue/Story identity, repository selection, and authority paths from the verified handoff. A different identity requires a new host handoff.

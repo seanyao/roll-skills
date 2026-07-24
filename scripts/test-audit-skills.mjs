@@ -98,6 +98,50 @@ const wrongFamilyOutcome = auditMutatedCoreFixture({
 });
 assert.ok(wrongFamilyOutcome.includes("workspace-handoff-case-outcome-invalid:arbitrary_cwd"));
 
+for (const [name, mutateRoutes, expectedViolation] of [
+  [
+    "missing prompt",
+    (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.promptContext = null; },
+    "workspace-handoff-case-execution-failed:arbitrary_cwd:missing_prompt_or_environment_context",
+  ],
+  [
+    "prompt/env conflict",
+    (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.environmentContext.workspaceId = "other"; },
+    "workspace-handoff-case-execution-failed:arbitrary_cwd:prompt_environment_context_conflict",
+  ],
+  [
+    "policy scope drift",
+    (routes) => {
+      routes.workspaceHandoffCases["roll-build"][0].input.promptContext.scope = "workspace_required_read";
+      routes.workspaceHandoffCases["roll-build"][0].input.environmentContext.scope = "workspace_required_read";
+    },
+    "workspace-handoff-case-execution-failed:arbitrary_cwd:context_scope_policy_mismatch",
+  ],
+  [
+    "rediscovery",
+    (routes) => { routes.workspaceHandoffCases["roll-build"][0].input.rediscoveryAttempted = true; },
+    "workspace-handoff-case-execution-failed:arbitrary_cwd:rediscovery_attempted",
+  ],
+]) {
+  const violations = auditMutatedCoreFixture({ mutateRoutes });
+  assert.ok(violations.includes(expectedViolation), `${name} input mutation must fail closed`);
+}
+
+for (const [name, mutateInput, expectedDecision] of [
+  ["authorization digest mismatch", (input) => { input.authorization.planSha256 = "c".repeat(64); }, "fresh_preview_required"],
+  ["natural-language bypass", (input) => { input.authorization = null; input.naturalLanguageIntentOnly = true; }, "preview_only"],
+  ["retry tuple drift", (input) => { input.retryPreview.configSha256 = "c".repeat(64); }, "fresh_preview_required"],
+]) {
+  const violations = auditMutatedCoreFixture({
+    skillName: "roll-ws-create",
+    mutateRoutes: (routes) => mutateInput(routes.workspaceHandoffCases["roll-ws-create"][1].input),
+  });
+  assert.ok(
+    violations.includes(`workspace-handoff-case-decision-invalid:explicit_selector:${expectedDecision}`),
+    `${name} input mutation must reject apply`,
+  );
+}
+
 const staleAuthority = auditMutatedCoreFixture({
   addCarrier: { path: "references/handoff-regression.md", text: "Use .roll/backlog.md as the source of truth.\nRun roll init before delivery.\n" },
 });
@@ -135,10 +179,10 @@ const allowedCreateJournal = auditMutatedCoreFixture({
 assert.deepEqual(allowedCreateJournal, []);
 
 for (const carrierPath of [
-  "SKILL.md.injected.md",
+  "SKILL.md",
   "references/injected.md",
-  "scripts/injected.mjs",
-  "assets/injected.txt",
+  "scripts/injected",
+  "assets/injected",
   "agents/openai.yaml",
 ]) {
   const violations = auditMutatedCoreFixture({
