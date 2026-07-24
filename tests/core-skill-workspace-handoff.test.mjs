@@ -25,5 +25,7 @@ test("core delivery skills expose a complete Workspace execution handoff contrac
     const skill = report.skills.find((candidate) => candidate.name === family);
     assert.ok(skill, `missing audited core family ${family}`);
     assert.deepEqual(skill.workspaceHandoffViolations, [], `${family} handoff contract must be complete`);
+    assert.equal(typeof skill.workspaceAllowsAmbientCwd, "boolean", `${family} must declare ambient cwd policy`);
+    assert.equal(typeof skill.workspaceAllowsLegacyRollPath, "boolean", `${family} must declare legacy path policy`);
   }
 });
