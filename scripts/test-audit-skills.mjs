@@ -88,6 +88,14 @@ assert.ok(brokenTaxonomy.includes("workspace-handoff-case-unknown:unknown_case")
 assert.ok(brokenTaxonomy.includes("workspace-handoff-case-outcome-invalid:explicit_selector"));
 assert.ok(brokenTaxonomy.includes("workspace-handoff-case-missing:requirement_mismatch"));
 
+const wrongFamilyOutcome = auditMutatedBuildFixture({
+  mutateRoutes: (routes) => {
+    routes.workspaceHandoffCases["roll-build"].find((item) => item.case === "arbitrary_cwd").expected =
+      "use_explicit_create_handoff";
+  },
+});
+assert.ok(wrongFamilyOutcome.includes("workspace-handoff-case-outcome-invalid:arbitrary_cwd"));
+
 const staleAuthority = auditMutatedBuildFixture({
   addReference: "Use .roll/backlog.md as the source of truth.\nRun roll init before delivery.\n",
 });
