@@ -12,8 +12,11 @@ const shipped = fs.readdirSync(root, { withFileTypes: true })
   .sort();
 
 test("every shipped skill family has operation-level Workspace context policy", () => {
+  const declarations = manifest.skillOperations;
   const policies = manifest.workspaceContextPolicies;
+  assert.ok(Array.isArray(declarations));
   assert.ok(Array.isArray(policies));
+  assert.deepEqual(declarations.map((entry) => entry.id).sort(), shipped);
   const ids = [...new Set(policies.map((policy) => policy.id))].sort();
   assert.deepEqual(ids, shipped);
   assert.equal(new Set(policies.map((policy) => `${policy.id}:${policy.operation}`)).size, policies.length);
@@ -22,6 +25,17 @@ test("every shipped skill family has operation-level Workspace context policy", 
     assert.equal(typeof policy.operation, "string");
     assert.ok(policy.operation.length > 0);
   }
+});
+
+test("independent skill operation declarations cannot be satisfied by policy self-inventory", () => {
+  const inventory = manifest.skillOperations.flatMap((entry) =>
+    entry.operations.map((operation) => `${entry.id}:${operation}`));
+  const policies = new Set(manifest.workspaceContextPolicies.map((policy) => `${policy.id}:${policy.operation}`));
+  assert.deepEqual(inventory.filter((operation) => !policies.has(operation)), []);
+
+  const future = `${manifest.skillOperations[0].id}:future-operation`;
+  const futureInventory = [...inventory, future];
+  assert.deepEqual(futureInventory.filter((operation) => !policies.has(operation)), [future]);
 });
 
 test("mixed create and clarify skills expose independent operations", () => {
