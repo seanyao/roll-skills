@@ -14,7 +14,7 @@ export const CORE_WORKSPACE_HANDOFF_SKILLS = [
 ];
 
 const WORKSPACE_HANDOFF_TAXONOMY = {
-  arbitrary_cwd: new Set(["use_handoff_authorities"]),
+  arbitrary_cwd: new Set(["use_handoff_authorities", "use_explicit_create_handoff"]),
   explicit_selector: new Set(["use_verified_explicit_identity"]),
   requirement_mismatch: new Set(["stop_and_route_workspace_target"]),
   multi_repo: new Set(["stop_without_repository_selector"]),

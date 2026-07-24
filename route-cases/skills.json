@@ -87,7 +87,7 @@
       { "case": "legacy_boundary", "expected": "legacy_migration_only" }
     ],
     "roll-ws-create": [
-      { "case": "arbitrary_cwd", "expected": "use_handoff_authorities" },
+      { "case": "arbitrary_cwd", "expected": "use_explicit_create_handoff" },
       { "case": "explicit_selector", "expected": "use_verified_explicit_identity" },
       { "case": "requirement_mismatch", "expected": "stop_and_route_workspace_target" },
       { "case": "multi_repo", "expected": "stop_without_repository_selector" },
