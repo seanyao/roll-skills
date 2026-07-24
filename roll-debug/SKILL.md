@@ -3,6 +3,12 @@ name: roll-debug
 license: MIT
 allowed-tools: "Read, Edit, Write, Bash, Agent"
 description: "Load when a web page needs black-box browser diagnostics, console/network/state capture, root-cause analysis, and source fixes for project-owned issues."
+workspace-execution-handoff: required
+workspace-context-scope: repository_required
+workspace-context-consumer: repository
+workspace-context-operations: diagnose, source_fix
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Debug
 
@@ -46,3 +52,11 @@ Load when a web page needs black-box browser diagnostics, console/network/state 
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- Run diagnostics only in the selected `context.issue.execution.repositories` entry identified by repository ID or alias. `source_fix` additionally requires selected repository access `write`.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

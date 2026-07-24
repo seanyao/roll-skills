@@ -2,6 +2,12 @@
 name: roll-onboard
 license: MIT
 description: "Load when bringing an existing codebase without Roll markers into Roll through read-only diagnosis and structured .roll/init-diagnosis.yaml + .roll/onboard-plan.yaml artifacts."
+workspace-execution-handoff: legacy_migration_only
+workspace-context-scope: legacy_migration_only
+workspace-context-operations: diagnose, write_plan
+workspace-allows-ambient-cwd: true
+workspace-allows-legacy-roll-path: true
+workspace-handoff-rationale: Legacy onboarding inspects and plans only for one explicitly selected legacy project.
 ---
 # Roll Onboard
 
@@ -63,13 +69,13 @@ npx @seanyao/roll@2 migrate --dry-run
 
 ### Step 0 - Pre-flight
 
-1. Confirm the current directory is an existing codebase root with source/manifests and no current Roll markers (`.roll/`, `.roll/backlog.md`, `.roll/features/`, `AGENTS.md`).
+1. Require an explicit `legacyProjectRoot` selector from the legacy handoff. Confirm that exact path is an existing codebase root with source/manifests and no current Roll markers (`.roll/`, `.roll/backlog.md`, `.roll/features/`, `AGENTS.md`). The shell current directory is never the selector.
 2. Confirm no pre-v2 Roll markers are present. If they are present, stop and route to the v2 migration command above.
 3. Check whether `.roll/init-diagnosis.yaml` or `.roll/onboard-plan.yaml` already exists. If either exists, ask the user before overwriting it.
 
 ### Step 1 - Read Code And Build Understanding
 
-Walk the repo. Identify:
+Walk only the explicitly selected `legacyProjectRoot`. Identify:
 
 - `type`: one of `backend-service` / `frontend-only` / `fullstack` / `cli`
 - `description`: 1-2 sentence summary of what this project does
@@ -288,3 +294,10 @@ Do not run `roll init --apply` yourself.
 - User aborts mid-conversation: do not write partial artifacts; tell the user to rerun from scratch.
 - Answers contradict detected facts: ask the contradictory question once more; if they confirm, respect the choice.
 - You cannot infer enough project understanding: write the artifact with detected facts only and tell the user which fields must be edited before apply.
+
+## Workspace Execution Handoff
+
+- This is a `legacy_migration_only` boundary. It requires one explicitly selected legacy project; ambient cwd is never the selector.
+- Rationale: Onboarding diagnosis inspects one explicitly selected legacy project before Workspace authority exists.
+- Rationale: Onboarding plan output is limited to the explicitly selected legacy project and returns one canonical Workspace creation action.
+- The plan must return a canonical next action for Workspace creation. There is no dual-write to Workspace authorities, repositories, backlog, or feature state.

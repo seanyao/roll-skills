@@ -3,8 +3,16 @@ name: roll-notes
 license: MIT
 allowed-tools: "Read, Edit, Write, Bash(date:*)"
 description: "Load when recording a development moment, decision, discovery, success, or failure into Roll chronological project diary."
+workspace-execution-handoff: required
+workspace-context-scope: workspace_required_mutation
+workspace-context-consumer: workspace
+workspace-context-operations: record
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # roll-notes
+
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
 
 ## Gotchas
 
@@ -105,3 +113,11 @@ $roll-notes 今天的 code review 给了很好的反馈
 ```
 
 注：notes 是项目元数据（与 `.roll/dream/` / `.roll/briefs/` 同级），不入 git；由 dream/brief 等下游 skill 跨日聚合。
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- Resolve the diary path only through `context.authorities`; `context.issue.execution.repositories` and any repository ID or alias are not authority for notes.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

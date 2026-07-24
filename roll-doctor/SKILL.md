@@ -3,6 +3,12 @@ name: roll-doctor
 license: MIT
 allowed-tools: "Read, Bash, Edit"
 description: "Load when diagnosing Roll toolchain health, conventions sync, skill file health, templates, symlinks, config validity, or installation integrity."
+workspace-execution-handoff: machine_only
+workspace-context-scope: machine_only
+workspace-context-operations: diagnose, repair
+workspace-allows-ambient-cwd: true
+workspace-allows-legacy-roll-path: false
+workspace-handoff-rationale: Machine-global diagnosis and confirmed repair operate on explicitly named installation targets only.
 ---
 # Roll Doctor
 
@@ -207,3 +213,10 @@ roll sync conventions
 # Reinstall (nuclear option)
 curl -fsSL https://raw.githubusercontent.com/seanyao/roll/main/install.sh | bash
 ```
+
+## Workspace Execution Handoff
+
+- Policy scope is `machine_only`; no Workspace authority is acquired.
+- Rationale: Machine-global installation diagnosis must run before a Workspace can be resolved.
+- Rationale: A confirmed machine repair changes only explicitly named Roll installation targets and never acquires Workspace authority.
+- Ambient cwd may start diagnosis, but repository access is forbidden; `repair` still requires explicit confirmation of the named machine target.

@@ -3,6 +3,12 @@ hidden: true
 name: roll-.echo
 license: MIT
 description: "Load when user intent is vague, contradictory, rambling, or unclear and should be restated for confirmation before action."
+workspace-execution-handoff: machine_only
+workspace-context-scope: machine_only
+workspace-context-operations: restate
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
+workspace-handoff-rationale: Intent restatement is machine-only and cannot acquire Workspace or repository authority.
 ---
 # Echo
 
@@ -116,3 +122,9 @@ End with a natural confirmation prompt, then act on the response:
 **User**: "$roll-design search improvements"
 
 *→ Route to roll-design. No echo needed.*
+
+## Workspace Execution Handoff
+
+- Policy scope is `machine_only`; no Workspace authority is acquired.
+- Rationale: Intent restatement operates only on the user message and must not acquire Workspace or repository authority.
+- Ambient cwd is ignored and repository access is forbidden.

@@ -2,6 +2,8 @@
 
 This file preserves the detailed contract extracted from SKILL.md. Read it when the hub points here for exact workflow steps, templates, rubrics, or recovery branches.
 
+Every relative `.roll` path in this carrier resolves from `context.authorities` and is never joined to cwd.
+
 ---
 
 # Roll Dream (Nightly Code Health Scan)
@@ -328,26 +330,19 @@ without context switching:
 {列表 或 "无。"}
 ```
 
-### Commit
+### Persist Workspace findings
 
-扫描完成后立即提交，把 dream 发现纳入 git 历史，便于晨报追溯：
+`record_candidates` writes the backlog and dream log only through the paths supplied by
+`context.authorities`. The host must persist those two authority mutations atomically so
+that a REFACTOR entry cannot exist without its matching dream log.
 
-```bash
-git add .roll/backlog.md .roll/dream/YYYY-MM-DD.md
-# 有 REFACTOR 条目时：
-git commit -m "chore: dream scan YYYY-MM-DD — {N} REFACTOR entries"
-# 无发现时：
-git commit -m "chore: dream scan YYYY-MM-DD — no findings"
-git push origin main
-```
-
-- .roll/backlog.md 和 dream 日志必须在**同一个 commit** 里入库，避免出现"REFACTOR 已加但日志找不到"或反过来的撕裂状态
-- 写文件失败时不要执行 commit；保持工作区干净，由调度器负责重试
-- 仅 `.roll/backlog.md` 和 `.roll/dream/YYYY-MM-DD.md` 入 commit，不要顺带带入其他无关变更
+- This skill must not run `git add`, `git commit`, or `git push` for Workspace artifacts.
+- A write failure leaves both authority targets unchanged; the scheduler owns retry.
+- Repository execution selected for `scan` is read-only and is never reused as the output target.
 
 ## Scheduler Configuration
 
-roll-.dream runs **locally** — it reads the local codebase directly.
+roll-.dream runs against the repository execution explicitly selected for `scan`; it never selects a repository from cwd.
 
 ### Local cron (default)
 

@@ -4,6 +4,12 @@ name: roll-.dream
 license: MIT
 allowed-tools: "Read, Glob, Grep, Bash(git:*, curl:*, claude:*), Write, Edit"
 description: "Load when a scheduled or manual nightly architecture health scan should inspect code structure, dead code, doc staleness, and refactor candidates."
+workspace-execution-handoff: required
+workspace-context-scope: policy_driven
+workspace-context-consumer: policy_driven
+workspace-context-operations: record_candidates, scan
+workspace-allows-ambient-cwd: false
+workspace-allows-legacy-roll-path: false
 ---
 # Roll Dream
 
@@ -45,3 +51,11 @@ Load when a scheduled or manual nightly architecture health scan should inspect 
 - Description changes require updates in `route-cases/skills.json`.
 - New observed failures should add a gotcha and the matching positive or negative route case.
 - Heavy examples, templates, recovery paths, and deterministic snippets belong in `references/`, `assets/`, or `scripts/`, not in this hub.
+
+## Workspace Execution Handoff
+
+- `workspaceContextPolicies` is authoritative per operation. Consume the prompt block and `ROLL_WORKSPACE_EXECUTION_CONTEXT`; both copies must be semantically identical.
+- Missing context, invalid JSON, schema mismatch, Workspace mismatch, Story mismatch, or scope mismatch means **STOP** and route to `roll-.clarify workspace_target`.
+- `scan` reads only the selected repository from `context.issue.execution.repositories` by repository ID or alias. `record_candidates` writes only through `context.authorities`; repository mutation is forbidden for that operation.
+- Do not rediscover authority from cwd or .roll. Retry and continuation must preserve the same Workspace and Issue/Story identity.
+- Legacy migration or recovery input is never execution authority and must not be dual-written.

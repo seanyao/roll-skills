@@ -24,7 +24,13 @@ test("every shipped skill family has operation-level Workspace context policy", 
     assert.equal(policy.surface, "skill");
     assert.equal(typeof policy.operation, "string");
     assert.ok(policy.operation.length > 0);
+    assert.ok(["none", "read", "mutation"].includes(policy.access));
+    assert.ok(["not_applicable", "required", "forbidden"].includes(policy.repositorySelector));
+    assert.ok(["none", "workspace", "issue", "repository", "machine", "legacy_project"].includes(policy.effectTarget));
   }
+  const policyKeys = policies.map((policy) => `${policy.id}:${policy.operation}`).sort();
+  const bundleKeys = manifest.workspaceHandoffCases.map((bundle) => `${bundle.id}:${bundle.operation}`).sort();
+  assert.deepEqual(bundleKeys, policyKeys);
 });
 
 test("independent skill operation declarations cannot be satisfied by policy self-inventory", () => {
@@ -56,6 +62,9 @@ test("mixed create and clarify skills expose independent operations", () => {
       operation: "workspace_target",
       scope: "workspace_optional_read",
       contextConsumer: "workspace",
+      effectTarget: "none",
+      access: "read",
+      repositorySelector: "not_applicable",
       allowsAmbientCwd: false,
       allowsLegacyRollPath: false,
     },
