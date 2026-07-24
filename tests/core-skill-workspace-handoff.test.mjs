@@ -70,6 +70,15 @@ test("all six core families execute the five Workspace handoff route proofs", ()
     assert.equal(result.actual, result.expected, `${result.family}:${result.case} outcome drifted`);
     assert.ok(result.proofs.length > 0, `${result.family}:${result.case} must report executable proofs`);
     assert.equal(typeof result.input, "object", `${result.family}:${result.case} must carry executable input`);
+    if (result.family !== "roll-ws-create") {
+      assert.equal(result.input.promptContext.schema, "roll.workspace-execution-context/v1");
+      assert.equal(result.input.promptContext.workspace.workspaceId, "roll");
+      assert.equal(typeof result.input.promptContext.resolution.source, "string");
+      assert.equal(typeof result.input.promptContext.authorities.backlog, "string");
+      assert.equal(Object.hasOwn(result.input.promptContext, "workspaceId"), false, "real context nests Workspace identity");
+      assert.equal(Object.hasOwn(result.input.promptContext, "storyId"), false, "real context nests Issue identity");
+      assert.equal(Object.hasOwn(result.input.promptContext, "scope"), false, "scope belongs to policy, not context JSON");
+    }
   }
 });
 
@@ -89,14 +98,18 @@ test("deterministic handoff evaluator fails closed on missing, conflict, multi-r
   }).decision, "missing_execution_context");
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
-    environmentContext: { ...arbitrary.environmentContext, workspaceId: "other" },
+    environmentContext: {
+      ...arbitrary.environmentContext,
+      workspace: { ...arbitrary.environmentContext.workspace, workspaceId: "other" },
+    },
   }).decision, "workspace_context_conflict");
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
     environmentContext: {
-      scope: arbitrary.environmentContext.scope,
-      storyId: arbitrary.environmentContext.storyId,
-      workspaceId: arbitrary.environmentContext.workspaceId,
+      authorities: arbitrary.environmentContext.authorities,
+      bindings: arbitrary.environmentContext.bindings,
+      resolution: arbitrary.environmentContext.resolution,
+      workspace: arbitrary.environmentContext.workspace,
       schema: arbitrary.environmentContext.schema,
     },
   }).decision, "use_handoff_authorities");
@@ -106,8 +119,8 @@ test("deterministic handoff evaluator fails closed on missing, conflict, multi-r
   }).decision, "invalid_workspace_context");
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
-    promptContext: { ...arbitrary.promptContext, scope: "workspace_required_read" },
-    environmentContext: { ...arbitrary.environmentContext, scope: "workspace_required_read" },
+    promptContext: { schema: "roll.workspace-execution-context/v1", workspaceId: "roll", storyId: null, scope: "workspace_required_mutation" },
+    environmentContext: { schema: "roll.workspace-execution-context/v1", workspaceId: "roll", storyId: null, scope: "workspace_required_mutation" },
   }, { expectedScope: "workspace_required_mutation" }).decision, "workspace_context_scope_mismatch");
   assert.equal(evaluateWorkspaceHandoffCase("roll-design", "arbitrary_cwd", {
     ...arbitrary,
@@ -121,6 +134,7 @@ test("deterministic handoff evaluator fails closed on missing, conflict, multi-r
     expectedAuthorityCategories: requiredAuthorityCategories["roll-design"],
   }).decision, "authority_contract_incomplete");
   assert.equal(evaluateWorkspaceHandoffCase("roll-build", "multi_repo", multiRepo).decision, "stop_without_repository_selector");
+  assert.equal(Object.hasOwn(multiRepo, "repositoryCount"), false, "repository cardinality must come from context.issue.execution.repositories");
   assert.equal(evaluateWorkspaceHandoffCase("roll-build", "multi_repo", {
     ...multiRepo,
     repositorySelector: "product",

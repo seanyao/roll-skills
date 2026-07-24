@@ -178,6 +178,30 @@ const allowedCreateJournal = auditMutatedCoreFixture({
 });
 assert.deepEqual(allowedCreateJournal, []);
 
+const disguisedLegacyExecution = auditMutatedCoreFixture({
+  skillName: "roll-ws-create",
+  addCarrier: {
+    path: "references/handoff-regression.md",
+    text: "Read the named old workspace-init journal; never delete it, but execute workspace-init.\n",
+  },
+});
+assert.ok(disguisedLegacyExecution.some((violation) => violation.startsWith("public-workspace-init:")));
+
+for (const authorityText of [
+  "Use .roll/evidence/screenshots as the evidence authority.",
+  "Use .roll/runtime/state as the runtime authority.",
+  "Use .roll/custom-authority/data as the current Workspace authority.",
+  "Do not scan another Workspace, but use .roll/backlog.md as the current Workspace authority.",
+]) {
+  const violations = auditMutatedCoreFixture({
+    addCarrier: { path: "references/handoff-regression.md", text: `${authorityText}\n` },
+  });
+  assert.ok(
+    violations.some((violation) => violation.startsWith("stale-workspace-authority:")),
+    `cwd-relative authority must fail: ${authorityText}`,
+  );
+}
+
 for (const carrierPath of [
   "SKILL.md",
   "references/injected.md",
